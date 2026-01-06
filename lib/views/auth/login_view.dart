@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:email_validator/email_validator.dart';
+import 'package:provider/provider.dart';
+import '../../controllers/auth_controller.dart';
 
 /// Vue de connexion permettant aux utilisateurs de s'authentifier
 class LoginView extends StatefulWidget {
@@ -13,7 +15,6 @@ class _LoginViewState extends State<LoginView> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  bool _isLoading = false;
   bool _obscurePassword = true;
 
   @override
@@ -29,39 +30,26 @@ class _LoginViewState extends State<LoginView> {
       return;
     }
 
-    setState(() {
-      _isLoading = true;
-    });
-
-    try {
-      // TODO: Implémenter l'authentification avec le contrôleur
-      // await context.read<AuthController>().login(
-      //   email: _emailController.text.trim(),
-      //   password: _passwordController.text,
-      // );
-      
-      // Simulation temporaire
-      await Future.delayed(const Duration(seconds: 2));
-      
-      if (mounted) {
-        // Navigation vers la page d'accueil après connexion réussie
-        Navigator.pushReplacementNamed(context, '/');
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Erreur de connexion: ${e.toString()}'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
+    final authController = context.read<AuthController>();
+    
+    final success = await authController.login(
+      _emailController.text.trim(),
+      _passwordController.text,
+    );
+    
+    if (!mounted) return;
+    
+    if (success) {
+      // Navigation vers la page d'accueil après connexion réussie
+      Navigator.pushReplacementNamed(context, '/');
+    } else {
+      // Affiche le message d'erreur
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(authController.errorMessage ?? 'Erreur de connexion'),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 
@@ -181,21 +169,25 @@ class _LoginViewState extends State<LoginView> {
                   const SizedBox(height: 24),
 
                   // Bouton de connexion
-                  FilledButton(
-                    onPressed: _isLoading ? null : _handleLogin,
-                    style: FilledButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                    ),
-                    child: _isLoading
-                        ? const SizedBox(
-                            height: 20,
-                            width: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                            ),
-                          )
-                        : const Text('Se connecter'),
+                  Consumer<AuthController>(
+                    builder: (context, authController, _) {
+                      return FilledButton(
+                        onPressed: authController.isLoading ? null : _handleLogin,
+                        style: FilledButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                        ),
+                        child: authController.isLoading
+                            ? const SizedBox(
+                                height: 20,
+                                width: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                ),
+                              )
+                            : const Text('Se connecter'),
+                      );
+                    },
                   ),
                   const SizedBox(height: 16),
 

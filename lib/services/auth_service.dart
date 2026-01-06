@@ -8,10 +8,15 @@ import '../models/user.dart';
 /// Gère la connexion, l'inscription et la persistance de la session
 class AuthService {
   final http.Client _client;
+  final SharedPreferences _prefs;
   String? _authToken;
   User? _currentUser;
   
-  AuthService({http.Client? client}) : _client = client ?? http.Client();
+  AuthService({
+    required http.Client client,
+    required SharedPreferences prefs,
+  })  : _client = client,
+        _prefs = prefs;
   
   /// Retourne le token d'authentification actuel
   String? get authToken => _authToken;
@@ -24,10 +29,9 @@ class AuthService {
   
   /// Initialise le service en chargeant la session depuis le stockage local
   Future<void> initialize() async {
-    final prefs = await SharedPreferences.getInstance();
-    _authToken = prefs.getString(ApiConfig.authTokenKey);
+    _authToken = _prefs.getString(ApiConfig.authTokenKey);
     
-    final userDataJson = prefs.getString(ApiConfig.userDataKey);
+    final userDataJson = _prefs.getString(ApiConfig.userDataKey);
     if (userDataJson != null) {
       try {
         _currentUser = User.fromJson(json.decode(userDataJson));
@@ -174,8 +178,7 @@ class AuthService {
         _currentUser = User.fromJson(data);
         
         // Mettre à jour le stockage local
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString(ApiConfig.userDataKey, json.encode(data));
+        await _prefs.setString(ApiConfig.userDataKey, json.encode(data));
         
         return _currentUser!;
       } else if (response.statusCode == 401) {
@@ -191,27 +194,24 @@ class AuthService {
   
   /// Sauvegarde la session dans le stockage local
   Future<void> _saveSession() async {
-    final prefs = await SharedPreferences.getInstance();
-    
     if (_authToken != null) {
-      await prefs.setString(ApiConfig.authTokenKey, _authToken!);
+      await _prefs.setString(ApiConfig.authTokenKey, _authToken!);
     }
     
     if (_currentUser != null) {
-      await prefs.setString(
+      await _prefs.setString(
         ApiConfig.userDataKey,
         json.encode(_currentUser!.toJson()),
       );
-      await prefs.setString(ApiConfig.userIdKey, _currentUser!.id);
+      await _prefs.setString(ApiConfig.userIdKey, _currentUser!.id);
     }
   }
   
   /// Supprime la session du stockage local
   Future<void> _clearSession() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(ApiConfig.authTokenKey);
-    await prefs.remove(ApiConfig.userDataKey);
-    await prefs.remove(ApiConfig.userIdKey);
+    await _prefs.remove(ApiConfig.authTokenKey);
+    await _prefs.remove(ApiConfig.userDataKey);
+    await _prefs.remove(ApiConfig.userIdKey);
     
     _authToken = null;
     _currentUser = null;

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../models/association.dart';
+import '../../controllers/association_controller.dart';
 
 /// Vue affichant la liste des associations avec recherche et filtres
 class AssociationListView extends StatefulWidget {
@@ -11,15 +13,15 @@ class AssociationListView extends StatefulWidget {
 
 class _AssociationListViewState extends State<AssociationListView> {
   final _searchController = TextEditingController();
-  bool _isLoading = false;
-  bool _isSearching = false;
-  List<Association> _associations = [];
+  final _scrollController = ScrollController();
   String? _selectedCategory;
   String? _initialQuery;
 
   @override
   void initState() {
     super.initState();
+    _scrollController.addListener(_onScroll);
+    
     WidgetsBinding.instance.addPostFrameCallback((_) {
       // Récupérer les arguments de navigation
       final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
@@ -38,97 +40,35 @@ class _AssociationListViewState extends State<AssociationListView> {
   @override
   void dispose() {
     _searchController.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
-  /// Charge les associations depuis l'API ou la base de données
-  Future<void> _loadAssociations() async {
-    setState(() {
-      _isLoading = true;
-    });
-
-    try {
-      // TODO: Implémenter le chargement avec le contrôleur
-      // final controller = context.read<AssociationController>();
-      // final results = await controller.searchAssociations(
-      //   query: _searchController.text,
-      //   category: _selectedCategory,
-      // );
-      
-      // Simulation temporaire avec des données factices
-      await Future.delayed(const Duration(seconds: 1));
-      
-      if (mounted) {
-        setState(() {
-          _associations = _getMockAssociations();
-          _isLoading = false;
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Erreur de chargement: ${e.toString()}'),
-            backgroundColor: Colors.red,
-          ),
-        );
+  /// Détecte le scroll pour charger plus de résultats
+  void _onScroll() {
+    if (_scrollController.position.pixels >= 
+        _scrollController.position.maxScrollExtent - 200) {
+      final controller = context.read<AssociationController>();
+      if (!controller.isLoading && controller.hasMoreResults) {
+        controller.loadMoreResults();
       }
     }
   }
 
-  /// Données factices pour la démonstration
-  List<Association> _getMockAssociations() {
-    return [
-      Association(
-        id: '1',
-        nom: 'Association Sportive Locale',
-        categorie: 'Sport',
-        ville: 'Paris',
-        codePostal: '75001',
-        adresse: '12 Rue du Sport',
-        objet: 'Promotion du sport pour tous',
-        noteGlobale: 4.5,
-        nombreAvis: 23,
-        latitude: 48.8566,
-        longitude: 2.3522,
-      ),
-      Association(
-        id: '2',
-        nom: 'Culture et Patrimoine',
-        categorie: 'Culture',
-        ville: 'Lyon',
-        codePostal: '69001',
-        adresse: '5 Place de la Culture',
-        objet: 'Préservation du patrimoine local',
-        noteGlobale: 4.8,
-        nombreAvis: 45,
-        latitude: 45.7640,
-        longitude: 4.8357,
-      ),
-      Association(
-        id: '3',
-        nom: 'Solidarité Quartier',
-        categorie: 'Social',
-        ville: 'Marseille',
-        codePostal: '13001',
-        adresse: '8 Avenue de l\'Entraide',
-        objet: 'Aide aux personnes en difficulté',
-        noteGlobale: 4.2,
-        nombreAvis: 12,
-        latitude: 43.2965,
-        longitude: 5.3698,
-      ),
-    ];
+  /// Charge les associations depuis l'API
+  Future<void> _loadAssociations() async {
+    final controller = context.read<AssociationController>();
+    await controller.searchAssociations(
+      query: _searchController.text.trim(),
+      categorie: _selectedCategory,
+      resetPage: true,
+    );
   }
+
+
 
   /// Gère la recherche d'associations
   void _handleSearch(String query) {
-    setState(() {
-      _isSearching = query.isNotEmpty;
-    });
     _loadAssociations();
   }
 
@@ -241,7 +181,7 @@ class _AssociationListViewState extends State<AssociationListView> {
                     decoration: InputDecoration(
                       hintText: 'Rechercher...',
                       prefixIcon: const Icon(Icons.search),
-                      suffixIcon: _isSearching
+                      suffixIcon: _searchController.text.isNotEmpty
                           ? IconButton(
                               icon: const Icon(Icons.clear),
                               onPressed: () {
@@ -292,35 +232,84 @@ class _AssociationListViewState extends State<AssociationListView> {
               ),
             ),
 
-          // Nombre de résultats
-          if (!_isLoading && _associations.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: Text(
-                '${_associations.length} association(s) trouvée(s)',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Colors.grey[600],
-                    ),
-              ),
-            ),
-
-          // Liste des associations
+          // Liste des associations avec Provider
           Expanded(
-            child: _isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : _associations.isEmpty
-                    ? _buildEmptyState()
-                    : RefreshIndicator(
+            child: Consumer<AssociationController>(
+              builder: (context, controller, _) {
+                // Affichage du chargement
+                if (controller.isLoading && controller.associations.isEmpty) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+
+                // Message d'erreur
+                if (controller.errorMessage != null) {
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.error_outline, size: 48, color: Colors.red),
+                        const SizedBox(height: 16),
+                        Text(
+                          controller.errorMessage!,
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 16),
+                        ElevatedButton(
+                          onPressed: _loadAssociations,
+                          child: const Text('Réessayer'),
+                        ),
+                      ],
+                    ),
+                  );
+                }
+
+                // Liste vide
+                if (controller.associations.isEmpty) {
+                  return _buildEmptyState();
+                }
+
+                // Affichage de la liste
+                return Column(
+                  children: [
+                    // Nombre de résultats
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      child: Text(
+                        '${controller.associations.length} association(s) trouvée(s)',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: Colors.grey[600],
+                            ),
+                      ),
+                    ),
+                    // Liste avec scroll infini
+                    Expanded(
+                      child: RefreshIndicator(
                         onRefresh: _loadAssociations,
                         child: ListView.builder(
+                          controller: _scrollController,
                           padding: const EdgeInsets.all(16),
-                          itemCount: _associations.length,
+                          itemCount: controller.associations.length + 
+                                    (controller.hasMoreResults ? 1 : 0),
                           itemBuilder: (context, index) {
-                            final association = _associations[index];
+                            // Indicateur de chargement en bas
+                            if (index == controller.associations.length) {
+                              return const Center(
+                                child: Padding(
+                                  padding: EdgeInsets.all(16.0),
+                                  child: CircularProgressIndicator(),
+                                ),
+                              );
+                            }
+                            final association = controller.associations[index];
                             return _buildAssociationCard(association);
                           },
                         ),
                       ),
+                    ),
+                  ],
+                );
+              },
+            ),
           ),
         ],
       ),
@@ -483,7 +472,6 @@ class _AssociationListViewState extends State<AssociationListView> {
                 _searchController.clear();
                 setState(() {
                   _selectedCategory = null;
-                  _isSearching = false;
                 });
                 _loadAssociations();
               },
