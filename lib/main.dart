@@ -36,7 +36,7 @@ void main() async {
     rnaApiService: rnaApiService,
     backendService: backendService,
   );
-  
+
   runApp(
     MultiProvider(
       providers: [

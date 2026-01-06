@@ -16,11 +16,13 @@ class AssociationController extends ChangeNotifier {
 
   // Filtres
   String _searchQuery = '';
-  String? _selectedCategorie;
   double? _minRating;
   String? _ville;
   String? _codePostal;
   String? _departement;
+  String? _regionCode;
+  bool _withCoordinates = false;
+  String? _status;
 
   // Pagination - supprimé car non utilisé dans le repository
   bool _hasMoreResults = true;
@@ -33,20 +35,24 @@ class AssociationController extends ChangeNotifier {
   bool get hasMoreResults => _hasMoreResults;
 
   String get searchQuery => _searchQuery;
-  String? get selectedCategorie => _selectedCategorie;
   double? get minRating => _minRating;
   String? get ville => _ville;
   String? get codePostal => _codePostal;
   String? get departement => _departement;
+  String? get regionCode => _regionCode;
+  bool get withCoordinates => _withCoordinates;
+  String? get status => _status;
 
   /// Recherche d'associations avec les filtres actuels
   Future<void> searchAssociations({
     String? query,
-    String? categorie,
     double? minRating,
     String? ville,
     String? codePostal,
     String? departement,
+    String? regionCode,
+    bool? withCoordinates,
+    String? status,
     bool resetPage = true,
   }) async {
     if (resetPage) {
@@ -56,11 +62,13 @@ class AssociationController extends ChangeNotifier {
 
     // Mise à jour des filtres
     if (query != null) _searchQuery = query;
-    if (categorie != null) _selectedCategorie = categorie;
     if (minRating != null) _minRating = minRating;
     if (ville != null) _ville = ville;
     if (codePostal != null) _codePostal = codePostal;
     if (departement != null) _departement = departement;
+    if (regionCode != null) _regionCode = regionCode;
+    if (withCoordinates != null) _withCoordinates = withCoordinates;
+    if (status != null) _status = status;
 
     _setLoading(true);
     _clearError();
@@ -70,7 +78,10 @@ class AssociationController extends ChangeNotifier {
         query: _searchQuery.isEmpty ? null : _searchQuery,
         ville: _ville,
         codePostal: _codePostal,
-        categorie: _selectedCategorie,
+        departement: _departement,
+        regionCode: _regionCode,
+        withCoordinates: _withCoordinates,
+        status: _status,
         minRating: _minRating,
       );
 
@@ -128,17 +139,18 @@ class AssociationController extends ChangeNotifier {
   /// Réinitialise tous les filtres
   void clearFilters() {
     _searchQuery = '';
-    _selectedCategorie = null;
     _minRating = null;
     _ville = null;
     _codePostal = null;
     _departement = null;
+    _regionCode = null;
+    _withCoordinates = false;
+    _status = null;
     notifyListeners();
   }
 
-  /// Applique uniquement les filtres de catégorie et note
-  void applyQuickFilters({String? categorie, double? minRating}) {
-    _selectedCategorie = categorie;
+  /// Applique rapidement un filtre de note
+  void applyQuickFilters({double? minRating}) {
     _minRating = minRating;
     searchAssociations(resetPage: true);
   }

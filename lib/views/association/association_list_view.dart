@@ -3,7 +3,7 @@ import 'package:provider/provider.dart';
 import '../../models/association.dart';
 import '../../controllers/association_controller.dart';
 
-/// Vue affichant la liste des associations avec recherche et filtres
+/// Vue moderne affichant la liste des associations
 class AssociationListView extends StatefulWidget {
   const AssociationListView({super.key});
 
@@ -14,7 +14,6 @@ class AssociationListView extends StatefulWidget {
 class _AssociationListViewState extends State<AssociationListView> {
   final _searchController = TextEditingController();
   final _scrollController = ScrollController();
-  String? _selectedCategory;
   String? _initialQuery;
 
   @override
@@ -23,12 +22,9 @@ class _AssociationListViewState extends State<AssociationListView> {
     _scrollController.addListener(_onScroll);
     
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      // Récupérer les arguments de navigation
       final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
       if (args != null) {
         _initialQuery = args['query'] as String?;
-        _selectedCategory = args['category'] as String?;
-        
         if (_initialQuery != null) {
           _searchController.text = _initialQuery!;
         }
@@ -44,7 +40,6 @@ class _AssociationListViewState extends State<AssociationListView> {
     super.dispose();
   }
 
-  /// Détecte le scroll pour charger plus de résultats
   void _onScroll() {
     if (_scrollController.position.pixels >= 
         _scrollController.position.maxScrollExtent - 200) {
@@ -55,259 +50,55 @@ class _AssociationListViewState extends State<AssociationListView> {
     }
   }
 
-  /// Charge les associations depuis l'API
   Future<void> _loadAssociations() async {
     final controller = context.read<AssociationController>();
     await controller.searchAssociations(
       query: _searchController.text.trim(),
-      categorie: _selectedCategory,
       resetPage: true,
     );
   }
 
-
-
-  /// Gère la recherche d'associations
   void _handleSearch(String query) {
     _loadAssociations();
-  }
-
-  /// Affiche le dialogue de filtres
-  void _showFilters() {
-    showModalBottomSheet(
-      context: context,
-      builder: (context) {
-        return Container(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'Filtres',
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-              ),
-              const SizedBox(height: 16),
-              ListTile(
-                leading: const Icon(Icons.category),
-                title: const Text('Catégorie'),
-                subtitle: Text(_selectedCategory ?? 'Toutes'),
-                onTap: () {
-                  // TODO: Implémenter la sélection de catégorie
-                  Navigator.pop(context);
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.location_on),
-                title: const Text('Localisation'),
-                subtitle: const Text('Autour de vous'),
-                onTap: () {
-                  // TODO: Implémenter la sélection de localisation
-                  Navigator.pop(context);
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.star),
-                title: const Text('Note minimum'),
-                subtitle: const Text('Toutes les notes'),
-                onTap: () {
-                  // TODO: Implémenter le filtre de note
-                  Navigator.pop(context);
-                },
-              ),
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: () {
-                        setState(() {
-                          _selectedCategory = null;
-                        });
-                        Navigator.pop(context);
-                        _loadAssociations();
-                      },
-                      child: const Text('Réinitialiser'),
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: FilledButton(
-                      onPressed: () {
-                        Navigator.pop(context);
-                        _loadAssociations();
-                      },
-                      child: const Text('Appliquer'),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        );
-      },
-    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFFFAFAFA),
       appBar: AppBar(
-        title: const Text('Associations'),
+        backgroundColor: Colors.white,
+        elevation: 0,
+        leading: IconButton(
+          onPressed: () => Navigator.pop(context),
+          icon: const Icon(Icons.arrow_back_rounded),
+        ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.map),
-            tooltip: 'Vue carte',
-            onPressed: () {
-              Navigator.pushNamed(context, '/map');
-            },
+            onPressed: () => Navigator.pushNamed(context, '/map'),
+            icon: const Icon(Icons.map_rounded),
           ),
         ],
       ),
       body: Column(
         children: [
-          // Barre de recherche
-          Container(
-            padding: const EdgeInsets.all(16),
-            color: Theme.of(context).primaryColor.withOpacity(0.05),
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _searchController,
-                    onChanged: _handleSearch,
-                    decoration: InputDecoration(
-                      hintText: 'Rechercher...',
-                      prefixIcon: const Icon(Icons.search),
-                      suffixIcon: _searchController.text.isNotEmpty
-                          ? IconButton(
-                              icon: const Icon(Icons.clear),
-                              onPressed: () {
-                                _searchController.clear();
-                                _handleSearch('');
-                              },
-                            )
-                          : null,
-                      filled: true,
-                      fillColor: Colors.white,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(30),
-                        borderSide: BorderSide.none,
-                      ),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                IconButton(
-                  icon: const Icon(Icons.filter_list),
-                  tooltip: 'Filtres',
-                  onPressed: _showFilters,
-                  style: IconButton.styleFrom(
-                    backgroundColor: Theme.of(context).primaryColor,
-                    foregroundColor: Colors.white,
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          // Chip de catégorie sélectionnée
-          if (_selectedCategory != null)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: Chip(
-                  label: Text(_selectedCategory!),
-                  onDeleted: () {
-                    setState(() {
-                      _selectedCategory = null;
-                    });
-                    _loadAssociations();
-                  },
-                ),
-              ),
-            ),
-
-          // Liste des associations avec Provider
+          _buildSearchHeader(),
           Expanded(
             child: Consumer<AssociationController>(
               builder: (context, controller, _) {
-                // Affichage du chargement
                 if (controller.isLoading && controller.associations.isEmpty) {
                   return const Center(child: CircularProgressIndicator());
                 }
 
-                // Message d'erreur
                 if (controller.errorMessage != null) {
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(Icons.error_outline, size: 48, color: Colors.red),
-                        const SizedBox(height: 16),
-                        Text(
-                          controller.errorMessage!,
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 16),
-                        ElevatedButton(
-                          onPressed: _loadAssociations,
-                          child: const Text('Réessayer'),
-                        ),
-                      ],
-                    ),
-                  );
+                  return _buildErrorState(controller.errorMessage!);
                 }
 
-                // Liste vide
                 if (controller.associations.isEmpty) {
                   return _buildEmptyState();
                 }
 
-                // Affichage de la liste
-                return Column(
-                  children: [
-                    // Nombre de résultats
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                      child: Text(
-                        '${controller.associations.length} association(s) trouvée(s)',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: Colors.grey[600],
-                            ),
-                      ),
-                    ),
-                    // Liste avec scroll infini
-                    Expanded(
-                      child: RefreshIndicator(
-                        onRefresh: _loadAssociations,
-                        child: ListView.builder(
-                          controller: _scrollController,
-                          padding: const EdgeInsets.all(16),
-                          itemCount: controller.associations.length + 
-                                    (controller.hasMoreResults ? 1 : 0),
-                          itemBuilder: (context, index) {
-                            // Indicateur de chargement en bas
-                            if (index == controller.associations.length) {
-                              return const Center(
-                                child: Padding(
-                                  padding: EdgeInsets.all(16.0),
-                                  child: CircularProgressIndicator(),
-                                ),
-                              );
-                            }
-                            final association = controller.associations[index];
-                            return _buildAssociationCard(association);
-                          },
-                        ),
-                      ),
-                    ),
-                  ],
-                );
+                return _buildAssociationsList(controller);
               },
             ),
           ),
@@ -316,167 +107,186 @@ class _AssociationListViewState extends State<AssociationListView> {
     );
   }
 
-  /// Construit une carte d'association
-  Widget _buildAssociationCard(Association association) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 16),
-      elevation: 2,
-      child: InkWell(
-        onTap: () {
-          Navigator.pushNamed(
-            context,
-            '/association-detail',
-            arguments: {'id': association.id},
+  Widget _buildSearchHeader() {
+    return Container(
+      color: Colors.white,
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('Rechercher', style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800)),
+          const SizedBox(height: 16),
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.grey[200]!),
+            ),
+            child: TextField(
+              controller: _searchController,
+              onChanged: _handleSearch,
+              decoration: InputDecoration(
+                hintText: 'Nom, ville, mot-cle...',
+                hintStyle: TextStyle(color: Colors.grey[400]),
+                prefixIcon: Icon(Icons.search_rounded, color: Colors.grey[400]),
+                suffixIcon: _searchController.text.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(Icons.clear_rounded),
+                        onPressed: () {
+                          _searchController.clear();
+                          _handleSearch('');
+                        },
+                      )
+                    : null,
+                border: InputBorder.none,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAssociationsList(AssociationController controller) {
+    return ListView.builder(
+      controller: _scrollController,
+      padding: const EdgeInsets.all(16),
+      itemCount: controller.associations.length + (controller.isLoading ? 1 : 0),
+      itemBuilder: (context, index) {
+        if (index == controller.associations.length) {
+          return const Center(
+            child: Padding(
+              padding: EdgeInsets.all(16),
+              child: CircularProgressIndicator(),
+            ),
           );
-        },
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // En-tête avec nom et catégorie
-              Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
+        }
+
+        final association = controller.associations[index];
+        return _buildAssociationCard(association);
+      },
+    );
+  }
+
+  Widget _buildAssociationCard(Association association) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Colors.grey[200]!),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () {
+            Navigator.pushNamed(
+              context,
+              '/association-detail',
+              arguments: {'id': association.id},
+            );
+          },
+          borderRadius: BorderRadius.circular(10),
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Row(
+              children: [
+                Container(
+                  width: 50,
+                  height: 50,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF2563EB).withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.business_rounded, size: 26, color: Color(0xFF2563EB)),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        association.nom,
+                        style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 2),
+                      if (association.ville != null)
                         Text(
-                          association.nom,
-                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                fontWeight: FontWeight.bold,
-                              ),
+                          association.ville!,
+                          style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
-                        if (association.categorie != null) ...[
-                          const SizedBox(height: 4),
-                          Chip(
-                            label: Text(
-                              association.categorie!,
-                              style: const TextStyle(fontSize: 12),
-                            ),
-                            padding: EdgeInsets.zero,
-                            visualDensity: VisualDensity.compact,
-                          ),
-                        ],
-                      ],
-                    ),
+                    ],
                   ),
-                  if (association.noteGlobale != null)
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: Colors.amber.withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(Icons.star, size: 16, color: Colors.amber),
-                          const SizedBox(width: 4),
-                          Text(
-                            association.noteGlobale!.toStringAsFixed(1),
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                ],
-              ),
-              const SizedBox(height: 8),
-
-              // Description/Objet
-              if (association.objet != null)
-                Text(
-                  association.objet!,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(color: Colors.grey[700]),
                 ),
-              const SizedBox(height: 8),
-
-              // Localisation
-              Row(
-                children: [
-                  Icon(Icons.location_on, size: 16, color: Colors.grey[600]),
-                  const SizedBox(width: 4),
-                  Expanded(
-                    child: Text(
-                      association.adresseComplete,
-                      style: TextStyle(
-                        color: Colors.grey[600],
-                        fontSize: 13,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ],
-              ),
-
-              // Nombre d'avis
-              if (association.nombreAvis != null && association.nombreAvis! > 0) ...[
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    Icon(Icons.comment, size: 16, color: Colors.grey[600]),
-                    const SizedBox(width: 4),
-                    Text(
-                      '${association.nombreAvis} avis',
-                      style: TextStyle(
-                        color: Colors.grey[600],
-                        fontSize: 13,
-                      ),
-                    ),
-                  ],
-                ),
+                const SizedBox(width: 8),
+                const Icon(Icons.arrow_forward_ios_rounded, size: 16, color: Color(0xFF2563EB)),
               ],
-            ],
+            ),
           ),
         ),
       ),
     );
   }
 
-  /// État vide quand aucune association n'est trouvée
   Widget _buildEmptyState() {
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(32.0),
+        padding: const EdgeInsets.all(32),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              Icons.search_off,
-              size: 64,
-              color: Colors.grey[400],
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: const Color(0xFF2563EB).withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(Icons.search_off_rounded, size: 48, color: Color(0xFF2563EB)),
             ),
             const SizedBox(height: 16),
-            Text(
-              'Aucune association trouvée',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: Colors.grey[600],
-                  ),
-            ),
+            const Text('Aucune association trouvee', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
             const SizedBox(height: 8),
-            Text(
-              'Essayez de modifier votre recherche ou vos filtres',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.grey[500]),
-            ),
-            const SizedBox(height: 24),
-            OutlinedButton.icon(
+            Text('Essayez une autre recherche', style: TextStyle(color: Colors.grey[600])),
+            const SizedBox(height: 20),
+            OutlinedButton(
               onPressed: () {
                 _searchController.clear();
-                setState(() {
-                  _selectedCategory = null;
-                });
                 _loadAssociations();
               },
-              icon: const Icon(Icons.refresh),
-              label: const Text('Réinitialiser la recherche'),
+              child: const Text('Reinitialiser'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildErrorState(String message) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: Colors.red.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(Icons.error_outline_rounded, size: 48, color: Colors.red),
+            ),
+            const SizedBox(height: 16),
+            Text(message, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600), textAlign: TextAlign.center),
+            const SizedBox(height: 20),
+            OutlinedButton(
+              onPressed: _loadAssociations,
+              child: const Text('Reessayer'),
             ),
           ],
         ),

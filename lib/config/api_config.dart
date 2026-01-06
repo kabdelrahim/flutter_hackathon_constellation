@@ -1,13 +1,15 @@
 /// Configuration des endpoints de l'API RNA (Répertoire National des Associations)
 /// et de l'API backend Constellation
 class ApiConfig {
-  // API RNA - OpenData du gouvernement
-  // Documentation: https://entreprise.data.gouv.fr/api_doc/rna
-  static const String rnaBaseUrl = 'https://entreprise.data.gouv.fr/api/rna/v1';
+  // API RNA - Répertoire National des Associations via HuWise (Opendatasoft)
+  // Documentation: https://hub.huwise.com/api/explore/v2.1/catalog/datasets/ref-france-association-repertoire-national/console
+  static const String rnaBaseUrl = 'https://hub.huwise.com/api/explore/v2.1';
+  static const String rnaDataset = 'ref-france-association-repertoire-national';
   
   // Endpoints RNA
-  static const String rnaSearchEndpoint = '/rechercher';
-  static const String rnaAssociationEndpoint = '/id';
+  static const String rnaSearchEndpoint = '/catalog/datasets/$rnaDataset/records';
+  static const String rnaExportsEndpoint = '/catalog/datasets/$rnaDataset/exports';
+  static const String rnaFacetsEndpoint = '/catalog/datasets/$rnaDataset/facets';
   
   // TODO: Remplacer par l'URL de votre backend
   // Pour le développement local, utiliser l'émulateur Android: http://10.0.2.2:3000
@@ -40,63 +42,12 @@ class ApiConfig {
   static const String userDataKey = 'user_data';
 }
 
-/// Catégories d'associations reconnues par l'application
+/// Catégories désactivées faute de mapping fiable avec l'OpenData
 class AssociationCategories {
-  static const List<String> all = [
-    'Sport',
-    'Culture',
-    'Social',
-    'Environnement',
-    'Éducation',
-    'Santé',
-    'Loisirs',
-    'Défense des droits',
-    'Religion',
-    'Autres',
-  ];
-  
-  /// Retourne la catégorie correspondant à l'objet de l'association (heuristique)
+  static const List<String> all = [];
+
+  /// Détection désactivée tant que les catégories ne sont pas fiables
   static String? detectCategory(String? objet) {
-    if (objet == null) return null;
-    
-    final objetLower = objet.toLowerCase();
-    
-    if (objetLower.contains(RegExp(r'sport|football|basket|tennis|athlétisme|natation'))) {
-      return 'Sport';
-    }
-    
-    if (objetLower.contains(RegExp(r'culture|art|musique|théâtre|cinéma|danse'))) {
-      return 'Culture';
-    }
-    
-    if (objetLower.contains(RegExp(r'social|solidarité|aide|entraide|humanitaire'))) {
-      return 'Social';
-    }
-    
-    if (objetLower.contains(RegExp(r'environnement|écologie|nature|biodiversité|climat'))) {
-      return 'Environnement';
-    }
-    
-    if (objetLower.contains(RegExp(r'éducation|enseignement|formation|école|pédagogie'))) {
-      return 'Éducation';
-    }
-    
-    if (objetLower.contains(RegExp(r'santé|médical|soin|bien-être'))) {
-      return 'Santé';
-    }
-    
-    if (objetLower.contains(RegExp(r'loisir|jeu|divertissement|hobby'))) {
-      return 'Loisirs';
-    }
-    
-    if (objetLower.contains(RegExp(r'droit|défense|justice|citoyen'))) {
-      return 'Défense des droits';
-    }
-    
-    if (objetLower.contains(RegExp(r'religion|culte|spirituel|église'))) {
-      return 'Religion';
-    }
-    
-    return 'Autres';
+    return null;
   }
 }

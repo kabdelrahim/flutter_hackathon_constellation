@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
-/// Vue d'accueil principale de l'application Constellation
-/// Permet la recherche d'associations et la navigation vers les autres fonctionnalités
+/// Home screen simple et moderne
 class HomeView extends StatefulWidget {
   const HomeView({super.key});
 
@@ -19,40 +18,32 @@ class _HomeViewState extends State<HomeView> {
     super.dispose();
   }
 
-  /// Navigue vers les résultats de recherche
   void _handleSearch() {
     final query = _searchController.text.trim();
-    if (query.isNotEmpty) {
-      Navigator.pushNamed(
-        context,
-        '/associations',
-        arguments: {'query': query},
-      );
-    }
+    Navigator.pushNamed(
+      context,
+      '/associations',
+      arguments: query.isNotEmpty ? {'query': query} : <String, dynamic>{},
+    );
   }
 
-  /// Gère le changement d'onglet dans la navigation
-  void _onNavigationItemTapped(int index) {
-    setState(() {
-      _selectedIndex = index;
-    });
+  void _navigateToAssociations(Map<String, dynamic> args) {
+    Navigator.pushNamed(context, '/associations', arguments: args);
+  }
 
-    // Navigation vers différentes sections selon l'index
+  void _onNavigationItemTapped(int index) {
+    setState(() => _selectedIndex = index);
     switch (index) {
       case 0:
-        // Déjà sur l'accueil
         break;
       case 1:
-        // Voir toutes les associations (mode liste)
-        Navigator.pushNamed(context, '/associations');
+        _navigateToAssociations({});
         break;
       case 2:
-        // Voir les associations sur une carte
         Navigator.pushNamed(context, '/map');
         break;
       case 3:
-        // Profil utilisateur
-        Navigator.pushNamed(context, '/profile');
+        Navigator.pushNamed(context, '/login');
         break;
     }
   }
@@ -60,355 +51,292 @@ class _HomeViewState extends State<HomeView> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFFFAFAFA),
       appBar: AppBar(
-        title: const Text('Constellation'),
-        centerTitle: true,
+        title: const Text('Constellation', style: TextStyle(fontWeight: FontWeight.w700)),
+        backgroundColor: Colors.white,
+        elevation: 0,
+        centerTitle: false,
         actions: [
           IconButton(
-            icon: const Icon(Icons.account_circle),
             tooltip: 'Mon compte',
-            onPressed: () {
-              Navigator.pushNamed(context, '/login');
-            },
+            onPressed: () => Navigator.pushNamed(context, '/login'),
+            icon: const Icon(Icons.account_circle_outlined),
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // En-tête avec titre et description
-            Container(
-              padding: const EdgeInsets.all(24.0),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    Theme.of(context).primaryColor,
-                    Theme.of(context).primaryColor.withOpacity(0.7),
-                  ],
-                ),
-              ),
-              child: Column(
-                children: [
-                  const Icon(
-                    Icons.location_city,
-                    size: 60,
-                    color: Colors.white,
-                  ),
-                  const SizedBox(height: 16),
-                  const Text(
-                    'Découvrez les associations',
-                    style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'Plus de 1,5 million d\'associations en France',
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: Colors.white70,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 24),
-                  
-                  // Barre de recherche principale
-                  TextField(
-                    controller: _searchController,
-                    onSubmitted: (_) => _handleSearch(),
-                    decoration: InputDecoration(
-                      hintText: 'Nom, catégorie, ville...',
-                      filled: true,
-                      fillColor: Colors.white,
-                      prefixIcon: const Icon(Icons.search),
-                      suffixIcon: IconButton(
-                        icon: const Icon(Icons.filter_list),
-                        onPressed: () {
-                          // TODO: Ouvrir le panneau de filtres
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Filtres à venir')),
-                          );
-                        },
-                      ),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(30),
-                        borderSide: BorderSide.none,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  
-                  // Bouton de recherche
-                  FilledButton.icon(
-                    onPressed: _handleSearch,
-                    icon: const Icon(Icons.search),
-                    label: const Text('Rechercher'),
-                    style: FilledButton.styleFrom(
-                      backgroundColor: Colors.white,
-                      foregroundColor: Theme.of(context).primaryColor,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 32,
-                        vertical: 16,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            // Section des catégories populaires
-            Padding(
-              padding: const EdgeInsets.all(24.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Catégories populaires',
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                  ),
-                  const SizedBox(height: 16),
-                  _buildCategoryGrid(),
-                ],
-              ),
-            ),
-
-            // Section des associations à proximité
-            Padding(
-              padding: const EdgeInsets.all(24.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'Autour de vous',
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                              fontWeight: FontWeight.bold,
-                            ),
-                      ),
-                      TextButton(
-                        onPressed: () {
-                          Navigator.pushNamed(context, '/associations');
-                        },
-                        child: const Text('Voir tout'),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  _buildNearbyAssociationsPlaceholder(),
-                ],
-              ),
-            ),
-
-            // Section comment ça marche
-            Container(
-              margin: const EdgeInsets.all(24.0),
-              padding: const EdgeInsets.all(24.0),
-              decoration: BoxDecoration(
-                color: Colors.grey[100],
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Comment ça marche ?',
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                  ),
-                  const SizedBox(height: 16),
-                  _buildHowItWorksStep(
-                    icon: Icons.search,
-                    title: 'Recherchez',
-                    description: 'Trouvez des associations près de chez vous',
-                  ),
-                  _buildHowItWorksStep(
-                    icon: Icons.info_outline,
-                    title: 'Découvrez',
-                    description: 'Consultez les informations et avis',
-                  ),
-                  _buildHowItWorksStep(
-                    icon: Icons.star_outline,
-                    title: 'Participez',
-                    description: 'Partagez votre expérience',
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _selectedIndex,
-        onDestinationSelected: _onNavigationItemTapped,
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.home_outlined),
-            selectedIcon: Icon(Icons.home),
-            label: 'Accueil',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.list_outlined),
-            selectedIcon: Icon(Icons.list),
-            label: 'Liste',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.map_outlined),
-            selectedIcon: Icon(Icons.map),
-            label: 'Carte',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.person_outline),
-            selectedIcon: Icon(Icons.person),
-            label: 'Profil',
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// Construit la grille de catégories
-  Widget _buildCategoryGrid() {
-    final categories = [
-      {'name': 'Sport', 'icon': Icons.sports_soccer, 'color': Colors.orange},
-      {'name': 'Culture', 'icon': Icons.palette, 'color': Colors.purple},
-      {'name': 'Social', 'icon': Icons.group, 'color': Colors.blue},
-      {'name': 'Environnement', 'icon': Icons.eco, 'color': Colors.green},
-      {'name': 'Éducation', 'icon': Icons.school, 'color': Colors.indigo},
-      {'name': 'Santé', 'icon': Icons.favorite, 'color': Colors.red},
-    ];
-
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 3,
-        crossAxisSpacing: 12,
-        mainAxisSpacing: 12,
-        childAspectRatio: 1,
-      ),
-      itemCount: categories.length,
-      itemBuilder: (context, index) {
-        final category = categories[index];
-        return InkWell(
-          onTap: () {
-            Navigator.pushNamed(
-              context,
-              '/associations',
-              arguments: {'category': category['name']},
-            );
-          },
-          borderRadius: BorderRadius.circular(12),
-          child: Container(
-            decoration: BoxDecoration(
-              color: (category['color'] as Color).withOpacity(0.1),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: (category['color'] as Color).withOpacity(0.3),
-              ),
-            ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  category['icon'] as IconData,
-                  size: 32,
-                  color: category['color'] as Color,
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  category['name'] as String,
-                  style: TextStyle(
-                    fontWeight: FontWeight.w500,
-                    color: category['color'] as Color,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  /// Placeholder pour les associations à proximité
-  Widget _buildNearbyAssociationsPlaceholder() {
-    return Container(
-      height: 200,
-      decoration: BoxDecoration(
-        color: Colors.grey[200],
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: const Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.location_on, size: 48, color: Colors.grey),
-            SizedBox(height: 8),
-            Text(
-              'Associations à proximité',
-              style: TextStyle(color: Colors.grey),
-            ),
-            Text(
-              'Activez la localisation',
-              style: TextStyle(color: Colors.grey, fontSize: 12),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  /// Construit une étape de "Comment ça marche"
-  Widget _buildHowItWorksStep({
-    required IconData icon,
-    required String title,
-    required String description,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16.0),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Theme.of(context).primaryColor.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(
-              icon,
-              color: Theme.of(context).primaryColor,
-            ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
+      body: SafeArea(
+        child: SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.all(20),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                  ),
-                ),
-                Text(
-                  description,
-                  style: TextStyle(
-                    color: Colors.grey[600],
-                  ),
-                ),
+                _buildHeader(),
+                const SizedBox(height: 32),
+                _buildSearchBar(),
+                const SizedBox(height: 32),
+                _buildQuickActions(),
+                const SizedBox(height: 40),
+                _buildNearbySection(),
+                const SizedBox(height: 40),
+                _buildInfoSection(),
               ],
+            ),
+          ),
+        ),
+      ),
+      bottomNavigationBar: _buildBottomNav(),
+    );
+  }
+
+  Widget _buildHeader() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Decouvrez',
+          style: TextStyle(fontSize: 32, fontWeight: FontWeight.w800, height: 1.1),
+        ),
+        const Text(
+          'les associations',
+          style: TextStyle(fontSize: 32, fontWeight: FontWeight.w800, color: Color(0xFF2563EB), height: 1.1),
+        ),
+        const SizedBox(height: 12),
+        Text(
+          'Explorez le plus grand annuaire français avec plus de 1,5 millions d\'associations',
+          style: TextStyle(fontSize: 15, color: Colors.grey[600], height: 1.5),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSearchBar() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey[200]!),
+      ),
+      child: TextField(
+        controller: _searchController,
+        onSubmitted: (_) => _handleSearch(),
+        decoration: InputDecoration(
+          hintText: 'Rechercher une association...',
+          hintStyle: TextStyle(color: Colors.grey[400]),
+          prefixIcon: Icon(Icons.search_rounded, color: Colors.grey[400]),
+          suffixIcon: IconButton(
+            icon: const Icon(Icons.arrow_forward_rounded),
+            onPressed: _handleSearch,
+          ),
+          border: InputBorder.none,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildQuickActions() {
+    final actions = [
+      {'icon': Icons.explore_rounded, 'label': 'Explorer', 'args': <String, dynamic>{}},
+      {'icon': Icons.location_on_rounded, 'label': 'Pres de moi', 'args': {'withCoordinates': true}},
+      {'icon': Icons.map_rounded, 'label': 'Carte', 'args': {'_map': true}},
+    ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('Actions rapides', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+        const SizedBox(height: 12),
+        Row(
+          children: actions.map((action) {
+            return Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                child: _buildActionButton(
+                  action['icon'] as IconData,
+                  action['label'] as String,
+                  action['args'] as Map<String, dynamic>,
+                ),
+              ),
+            );
+          }).toList(),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildActionButton(IconData icon, String label, Map<String, dynamic> args) {
+    return GestureDetector(
+      onTap: () {
+        if (args.containsKey('_map')) {
+          Navigator.pushNamed(context, '/map');
+        } else {
+          _navigateToAssociations(args);
+        }
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.grey[200]!),
+        ),
+        child: Column(
+          children: [
+            Icon(icon, color: const Color(0xFF2563EB), size: 24),
+            const SizedBox(height: 6),
+            Text(
+              label,
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNearbySection() {
+    final nearby = [
+      {'name': 'MJC Lyon Centre', 'city': 'Lyon (69)', 'distance': '1,2 km'},
+      {'name': 'Sport & Solidarite', 'city': 'Villeurbanne (69)', 'distance': '2,8 km'},
+      {'name': 'Culture Pour Tous', 'city': 'Lyon 3eme (69)', 'distance': '3,5 km'},
+    ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text('Autour de vous', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+            TextButton(
+              onPressed: () => _navigateToAssociations({'withCoordinates': true}),
+              style: TextButton.styleFrom(padding: EdgeInsets.zero),
+              child: const Text('Voir tout', style: TextStyle(fontSize: 14)),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        ...nearby.map((item) => Padding(
+          padding: const EdgeInsets.only(bottom: 10),
+          child: Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: Colors.grey[200]!),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF2563EB).withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.business_rounded, size: 22, color: Color(0xFF2563EB)),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(item['name']!, style: const TextStyle(fontWeight: FontWeight.w600)),
+                      Text(item['city']!, style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+                    ],
+                  ),
+                ),
+                Text(item['distance']!, style: TextStyle(fontSize: 12, color: Colors.grey[500], fontWeight: FontWeight.w500)),
+              ],
+            ),
+          ),
+        )).toList(),
+      ],
+    );
+  }
+
+  Widget _buildInfoSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('Comment ca marche', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+        const SizedBox(height: 16),
+        _buildInfoStep(Icons.search_rounded, 'Recherchez', 'Trouvez par nom, ville ou mot-cle'),
+        const SizedBox(height: 12),
+        _buildInfoStep(Icons.map_rounded, 'Explorez', 'Carte interactive et liste detaillee'),
+        const SizedBox(height: 12),
+        _buildInfoStep(Icons.star_rounded, 'Participez', 'Notez et partagez votre avis'),
+      ],
+    );
+  }
+
+  Widget _buildInfoStep(IconData icon, String title, String subtitle) {
+    return Row(
+      children: [
+        Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            color: const Color(0xFF2563EB).withOpacity(0.1),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Icon(icon, size: 20, color: const Color(0xFF2563EB)),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
+              Text(subtitle, style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildBottomNav() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border(top: BorderSide(color: Colors.grey[200]!)),
+      ),
+      child: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _buildNavItem(Icons.home_rounded, 'Accueil', 0),
+              _buildNavItem(Icons.list_alt_rounded, 'Liste', 1),
+              _buildNavItem(Icons.map_rounded, 'Carte', 2),
+              _buildNavItem(Icons.person_rounded, 'Profil', 3),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNavItem(IconData icon, String label, int index) {
+    final isSelected = _selectedIndex == index;
+    return GestureDetector(
+      onTap: () => _onNavigationItemTapped(index),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: isSelected ? const Color(0xFF2563EB) : Colors.grey[400], size: 24),
+          const SizedBox(height: 2),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w500,
+              color: isSelected ? const Color(0xFF2563EB) : Colors.grey[600],
             ),
           ),
         ],

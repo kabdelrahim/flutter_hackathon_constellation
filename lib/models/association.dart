@@ -15,6 +15,16 @@ class Association {
   final DateTime? dateCreation;
   final DateTime? datePublication;
   
+  // Champs enrichis depuis l'API HuWise
+  final String? status; // Active, Dissoute, etc.
+  final String? siret; // Numéro SIRET
+  final String? socialObjectCode1; // Code objet social primaire
+  final String? socialObjectCode2; // Code objet social secondaire
+  final String? regionCode; // Code région
+  final String? regionName; // Nom région
+  final DateTime? updateDate; // Date dernière mise à jour
+  final DateTime? dissolutionDate; // Date dissolution si applicable
+  
   // Données enrichies par la communauté
   final String? description; // Description enrichie par le président
   final String? siteWeb;
@@ -41,6 +51,14 @@ class Association {
     this.categorie,
     this.dateCreation,
     this.datePublication,
+    this.status,
+    this.siret,
+    this.socialObjectCode1,
+    this.socialObjectCode2,
+    this.regionCode,
+    this.regionName,
+    this.updateDate,
+    this.dissolutionDate,
     this.description,
     this.siteWeb,
     this.email,
@@ -53,22 +71,65 @@ class Association {
     this.presidentId,
   });
   
-  /// Convertit un JSON (depuis l'API RNA) en objet Association
+  /// Construit une adresse complète à partir des champs granulaires HuWise
+  static String _buildFullAddress(Map<String, dynamic> json) {
+    final parts = <String>[];
+    
+    // Construire depuis les champs granulaires
+    if (json['street_number_asso'] != null) {
+      parts.add(json['street_number_asso'].toString());
+    }
+    if (json['street_type_asso'] != null) {
+      parts.add(json['street_type_asso'].toString());
+    }
+    if (json['street_name_asso'] != null) {
+      parts.add(json['street_name_asso'].toString());
+    }
+    
+    // Fallback sur le champ compilé si disponible
+    if (parts.isEmpty && json['comp_address_asso'] != null) {
+      parts.add(json['comp_address_asso'].toString());
+    }
+    
+    return parts.join(' ');
+  }
+  
+  /// Convertit un JSON (depuis l'API RNA HuWise) en objet Association
   factory Association.fromRnaJson(Map<String, dynamic> json) {
+    final fullAddress = _buildFullAddress(json);
+    
     return Association(
-      id: json['id_association'] ?? json['id'] ?? '',
-      nom: json['titre'] ?? json['nom'] ?? 'Association sans nom',
-      sigle: json['sigle'],
-      objet: json['objet'],
-      adresse: json['adresse_libelle_voie'],
-      codePostal: json['adresse_code_postal'],
-      ville: json['adresse_libelle_commune'],
-      departement: json['adresse_code_departement'],
-      dateCreation: json['date_creation'] != null
-          ? DateTime.tryParse(json['date_creation'])
+      id: json['id'] ?? '',
+      nom: json['title'] ?? json['nom'] ?? 'Association sans nom',
+      sigle: json['short_title'] ?? json['sigle'],
+      objet: json['object'] ?? json['objet'],
+      adresse: fullAddress.isNotEmpty ? fullAddress : null,
+      codePostal: json['pc_address_asso'] ?? json['adresse_code_postal'],
+      ville: json['com_name_asso'] ?? json['adresse_libelle_commune'],
+      departement: json['dep_name'] ?? json['dep_code'] ?? json['adresse_code_departement'],
+      latitude: json['geo_point_2d'] != null && json['geo_point_2d'] is Map
+          ? (json['geo_point_2d']['lat'] as num?)?.toDouble()
           : null,
-      datePublication: json['date_publication'] != null
-          ? DateTime.tryParse(json['date_publication'])
+      longitude: json['geo_point_2d'] != null && json['geo_point_2d'] is Map
+          ? (json['geo_point_2d']['lon'] as num?)?.toDouble()
+          : null,
+      dateCreation: json['creation_date'] != null
+          ? DateTime.tryParse(json['creation_date'].toString())
+          : null,
+      datePublication: json['publication_date'] != null
+          ? DateTime.tryParse(json['publication_date'].toString())
+          : null,
+      status: json['position'],
+      siret: json['siret'],
+      socialObjectCode1: json['social_object1'],
+      socialObjectCode2: json['social_object2'],
+      regionCode: json['reg_code'],
+      regionName: json['reg_name'],
+      updateDate: json['update_date'] != null
+          ? DateTime.tryParse(json['update_date'].toString())
+          : null,
+      dissolutionDate: json['dissolution_date'] != null
+          ? DateTime.tryParse(json['dissolution_date'].toString())
           : null,
     );
   }
@@ -92,6 +153,18 @@ class Association {
           : null,
       datePublication: json['date_publication'] != null
           ? DateTime.tryParse(json['date_publication'])
+          : null,
+      status: json['status'],
+      siret: json['siret'],
+      socialObjectCode1: json['social_object_code1'],
+      socialObjectCode2: json['social_object_code2'],
+      regionCode: json['region_code'],
+      regionName: json['region_name'],
+      updateDate: json['update_date'] != null
+          ? DateTime.tryParse(json['update_date'])
+          : null,
+      dissolutionDate: json['dissolution_date'] != null
+          ? DateTime.tryParse(json['dissolution_date'])
           : null,
       description: json['description'],
       siteWeb: json['site_web'],
@@ -124,6 +197,14 @@ class Association {
       'categorie': categorie,
       'date_creation': dateCreation?.toIso8601String(),
       'date_publication': datePublication?.toIso8601String(),
+      'status': status,
+      'siret': siret,
+      'social_object_code1': socialObjectCode1,
+      'social_object_code2': socialObjectCode2,
+      'region_code': regionCode,
+      'region_name': regionName,
+      'update_date': updateDate?.toIso8601String(),
+      'dissolution_date': dissolutionDate?.toIso8601String(),
       'description': description,
       'site_web': siteWeb,
       'email': email,
