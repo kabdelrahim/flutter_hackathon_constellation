@@ -9,6 +9,33 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  
+  # State Management
+  provider: ^6.1.1
+  
+  # HTTP Client for API calls
+  http: ^1.2.0
+  
+  # JSON Serialization
+  json_annotation: ^4.8.1
+  
+  # Maps (OpenStreetMap)
+  flutter_map: ^6.1.0
+  latlong2: ^0.9.0
+  
+  # Location Services
+  geolocator: ^11.0.0
+  geocoding: ^2.1.1
+  
+  # UI Components
+  flutter_rating_bar: ^4.0.1
+  cached_network_image: ^3.3.1
+  
+  # Local Storage
+  shared_preferences: ^2.2.2
+  
+  # Form Validation
+  email_validator: ^2.1.17
 
 dev_dependencies:
   flutter_test:

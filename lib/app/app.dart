@@ -12,6 +12,7 @@ class ConstellationApp extends StatelessWidget {
       theme: appTheme,
       initialRoute: '/',
       routes: appRoutes,
+      onGenerateRoute: onGenerateRoute, // Gère les routes avec paramètres
       debugShowCheckedModeBanner: false,
     );
   }
