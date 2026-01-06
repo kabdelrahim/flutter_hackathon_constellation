@@ -4,6 +4,7 @@ import '../views/auth/login_view.dart';
 import '../views/auth/register_view.dart';
 import '../views/association/association_list_view.dart';
 import '../views/association/association_detail_view.dart';
+import '../views/association/association_map_view.dart';
 
 /// Définition des routes de l'application
 /// Chaque route pointe vers une vue spécifique
@@ -13,6 +14,7 @@ final Map<String, WidgetBuilder> appRoutes = {
   '/register': (context) => const RegisterView(),
   '/associations': (context) => const AssociationListView(),
   '/association-detail': (context) => const AssociationDetailView(),
+  '/map': (context) => const AssociationMapView(),
 };
 
 /// Gère les routes dynamiques avec paramètres
@@ -56,6 +58,12 @@ Route<dynamic>? onGenerateRoute(RouteSettings settings) {
       // Redirection si pas d'ID
       return MaterialPageRoute(
         builder: (context) => const HomeView(),
+      );
+      
+    case '/map':
+      return MaterialPageRoute(
+        builder: (context) => const AssociationMapView(),
+        settings: settings,
       );
       
     default:
