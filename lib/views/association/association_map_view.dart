@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:provider/provider.dart';
 import '../../models/association.dart';
+import '../../controllers/association_controller.dart';
 
 /// Vue cartographique affichant les associations sur une carte OpenStreetMap
 /// Permet de filtrer les associations par catégorie et autres critères
@@ -15,10 +17,6 @@ class AssociationMapView extends StatefulWidget {
 
 class _AssociationMapViewState extends State<AssociationMapView> {
   final MapController _mapController = MapController();
-  
-  bool _isLoading = false;
-  List<Association> _associations = [];
-  List<Association> _filteredAssociations = [];
   
   // Position initiale (centre de la France)
   LatLng _currentPosition = const LatLng(46.603354, 1.888334);
@@ -84,30 +82,14 @@ class _AssociationMapViewState extends State<AssociationMapView> {
 
   /// Charge les associations depuis l'API
   Future<void> _loadAssociations() async {
-    setState(() {
-      _isLoading = true;
-    });
-
     try {
-      // TODO: Implémenter le chargement avec le contrôleur
-      // final controller = context.read<AssociationController>();
-      // final results = await controller.getAllAssociations();
-      
-      // Simulation temporaire avec des données factices
-      await Future.delayed(const Duration(seconds: 1));
-      
-      if (mounted) {
-        setState(() {
-          _associations = _getMockAssociations();
-          _filteredAssociations = _associations;
-          _isLoading = false;
-        });
-      }
+      final controller = context.read<AssociationController>();
+      await controller.searchAssociations(
+        query: null,
+        resetPage: true,
+      );
     } catch (e) {
       if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Erreur de chargement: ${e.toString()}'),
@@ -118,132 +100,42 @@ class _AssociationMapViewState extends State<AssociationMapView> {
     }
   }
 
-  /// Données factices pour la démonstration avec coordonnées GPS réelles
-  List<Association> _getMockAssociations() {
-    return [
-      Association(
-        id: '1',
-        nom: 'Association Sportive Paris Centre',
-        categorie: 'Sport',
-        ville: 'Paris',
-        codePostal: '75001',
-        adresse: '12 Rue du Sport',
-        objet: 'Promotion du sport pour tous',
-        noteGlobale: 4.5,
-        nombreAvis: 23,
-        latitude: 48.8566,
-        longitude: 2.3522,
-        estRevendiquee: true,
-      ),
-      Association(
-        id: '2',
-        nom: 'Culture et Patrimoine Lyon',
-        categorie: 'Culture',
-        ville: 'Lyon',
-        codePostal: '69001',
-        adresse: '5 Place de la Culture',
-        objet: 'Préservation du patrimoine local',
-        noteGlobale: 4.8,
-        nombreAvis: 45,
-        latitude: 45.7640,
-        longitude: 4.8357,
-        estRevendiquee: true,
-      ),
-      Association(
-        id: '3',
-        nom: 'Solidarité Quartier Marseille',
-        categorie: 'Social',
-        ville: 'Marseille',
-        codePostal: '13001',
-        adresse: '8 Avenue de l\'Entraide',
-        objet: 'Aide aux personnes en difficulté',
-        noteGlobale: 4.2,
-        nombreAvis: 12,
-        latitude: 43.2965,
-        longitude: 5.3698,
-        estRevendiquee: false,
-      ),
-      Association(
-        id: '4',
-        nom: 'Écologie Bordeaux',
-        categorie: 'Environnement',
-        ville: 'Bordeaux',
-        codePostal: '33000',
-        adresse: '15 Rue Verte',
-        objet: 'Protection de l\'environnement',
-        noteGlobale: 4.6,
-        nombreAvis: 34,
-        latitude: 44.8378,
-        longitude: -0.5792,
-      ),
-      Association(
-        id: '5',
-        nom: 'Éducation Pour Tous Toulouse',
-        categorie: 'Éducation',
-        ville: 'Toulouse',
-        codePostal: '31000',
-        adresse: '20 Avenue des Écoles',
-        objet: 'Soutien scolaire et éducation',
-        noteGlobale: 4.3,
-        nombreAvis: 18,
-        latitude: 43.6047,
-        longitude: 1.4442,
-        estRevendiquee: true,
-      ),
-      Association(
-        id: '6',
-        nom: 'Santé et Bien-être Nice',
-        categorie: 'Santé',
-        ville: 'Nice',
-        codePostal: '06000',
-        adresse: '10 Boulevard de la Santé',
-        objet: 'Promotion de la santé',
-        noteGlobale: 4.7,
-        nombreAvis: 28,
-        latitude: 43.7102,
-        longitude: 7.2620,
-      ),
-    ];
-  }
-
   /// Applique les filtres sur les associations
-  void _applyFilters() {
-    setState(() {
-      _filteredAssociations = _associations.where((association) {
-        // Filtre par catégorie
-        if (_selectedCategory != null && 
-            association.categorie != _selectedCategory) {
+  List<Association> _getFilteredAssociations(List<Association> associations) {
+    return associations.where((association) {
+      // Filtre par catégorie
+      if (_selectedCategory != null && 
+          association.categorie != _selectedCategory) {
+        return false;
+      }
+
+      // Filtre par note minimum
+      if (association.noteGlobale != null && 
+          association.noteGlobale! < _minRating) {
+        return false;
+      }
+
+      // Filtre par associations revendiquées
+      if (_onlyClaimedAssociations && !association.estRevendiquee) {
+        return false;
+      }
+
+      // Filtre par distance (si localisation activée)
+      if (_isLocationEnabled && association.hasCoordinates) {
+        final distance = Geolocator.distanceBetween(
+          _currentPosition.latitude,
+          _currentPosition.longitude,
+          association.latitude!,
+          association.longitude!,
+        ) / 1000; // Conversion en km
+        
+        if (distance > _maxDistance) {
           return false;
         }
+      }
 
-        // Filtre par note minimum
-        if (association.noteGlobale != null && 
-            association.noteGlobale! < _minRating) {
-          return false;
-        }
-
-        // Filtre par associations revendiquées
-        if (_onlyClaimedAssociations && !association.estRevendiquee) {
-          return false;
-        }
-
-        // Filtre par distance (si localisation activée)
-        if (_isLocationEnabled && association.hasCoordinates) {
-          final distance = Geolocator.distanceBetween(
-            _currentPosition.latitude,
-            _currentPosition.longitude,
-            association.latitude!,
-            association.longitude!,
-          ) / 1000; // Conversion en km
-          
-          if (distance > _maxDistance) {
-            return false;
-          }
-        }
-
-        return true;
-      }).toList();
-    });
+      return true;
+    }).toList();
   }
 
   /// Affiche le panneau de filtres
@@ -383,9 +275,8 @@ class _AssociationMapViewState extends State<AssociationMapView> {
                       child: FilledButton(
                         onPressed: () {
                           setState(() {
-                            // Appliquer les filtres
+                            // Les filtres sont appliqu\u00e9s automatiquement via Consumer
                           });
-                          _applyFilters();
                           Navigator.pop(context);
                         },
                         child: const Text('Appliquer'),
@@ -500,176 +391,181 @@ class _AssociationMapViewState extends State<AssociationMapView> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Carte des associations'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.list),
-            tooltip: 'Vue liste',
-            onPressed: () {
-              Navigator.pushReplacementNamed(context, '/associations');
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.filter_list),
-            tooltip: 'Filtres',
-            onPressed: _showFilterPanel,
-          ),
-        ],
-      ),
-      body: Stack(
-        children: [
-          // Carte OpenStreetMap
-          FlutterMap(
-            mapController: _mapController,
-            options: MapOptions(
-              initialCenter: _currentPosition,
-              initialZoom: _currentZoom,
-              minZoom: 5.0,
-              maxZoom: 18.0,
-            ),
-            children: [
-              // Tuiles OpenStreetMap
-              TileLayer(
-                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                userAgentPackageName: 'com.constellation.app',
-                maxZoom: 19,
+    return Consumer<AssociationController>(
+      builder: (context, controller, child) {
+        final filteredAssociations = _getFilteredAssociations(controller.associations);
+        
+        return Scaffold(
+          appBar: AppBar(
+            title: const Text('Carte des associations'),
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.list),
+                tooltip: 'Vue liste',
+                onPressed: () {
+                  Navigator.pushReplacementNamed(context, '/associations');
+                },
               ),
-              
-              // Marqueurs des associations
-              MarkerLayer(
-                markers: _filteredAssociations
-                    .where((association) => association.hasCoordinates)
-                    .map((association) => Marker(
-                          point: LatLng(
-                            association.latitude!,
-                            association.longitude!,
-                          ),
-                          width: 40,
-                          height: 40,
-                          child: GestureDetector(
-                            onTap: () => _showAssociationDetails(association),
-                            child: Stack(
-                              children: [
-                                Icon(
-                                  Icons.location_on,
-                                  size: 40,
-                                  color: _getCategoryColor(association.categorie),
-                                ),
-                                if (association.estRevendiquee)
-                                  Positioned(
-                                    right: 0,
-                                    top: 0,
-                                    child: Container(
-                                      padding: const EdgeInsets.all(2),
-                                      decoration: const BoxDecoration(
-                                        color: Colors.white,
-                                        shape: BoxShape.circle,
-                                      ),
-                                      child: const Icon(
-                                        Icons.verified,
-                                        size: 12,
-                                        color: Colors.green,
-                                      ),
+              IconButton(
+                icon: const Icon(Icons.filter_list),
+                tooltip: 'Filtres',
+                onPressed: _showFilterPanel,
+              ),
+            ],
+          ),
+          body: Stack(
+            children: [
+              // Carte OpenStreetMap
+              FlutterMap(
+                mapController: _mapController,
+                options: MapOptions(
+                  initialCenter: _currentPosition,
+                  initialZoom: _currentZoom,
+                  minZoom: 5.0,
+                  maxZoom: 18.0,
+                ),
+                children: [
+                  // Tuiles OpenStreetMap
+                  TileLayer(
+                    urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                    userAgentPackageName: 'com.constellation.app',
+                    maxZoom: 19,
+                  ),
+                  
+                  // Marqueurs des associations
+                  MarkerLayer(
+                    markers: filteredAssociations
+                        .where((association) => association.hasCoordinates)
+                        .map((association) => Marker(
+                              point: LatLng(
+                                association.latitude!,
+                                association.longitude!,
+                              ),
+                              width: 40,
+                              height: 40,
+                              child: GestureDetector(
+                                onTap: () => _showAssociationDetails(association),
+                                child: Stack(
+                                  children: [
+                                    Icon(
+                                      Icons.location_on,
+                                      size: 40,
+                                      color: _getCategoryColor(association.categorie),
                                     ),
-                                  ),
-                              ],
+                                    if (association.estRevendiquee)
+                                      Positioned(
+                                        right: 0,
+                                        top: 0,
+                                        child: Container(
+                                          padding: const EdgeInsets.all(2),
+                                          decoration: const BoxDecoration(
+                                            color: Colors.white,
+                                            shape: BoxShape.circle,
+                                          ),
+                                          child: const Icon(
+                                            Icons.verified,
+                                            size: 12,
+                                            color: Colors.green,
+                                          ),
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              ),
+                            ))
+                        .toList(),
+                  ),
+                  
+                  // Marqueur de position actuelle
+                  if (_isLocationEnabled)
+                    MarkerLayer(
+                      markers: [
+                        Marker(
+                          point: _currentPosition,
+                          width: 20,
+                          height: 20,
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: Colors.blue,
+                              shape: BoxShape.circle,
+                              border: Border.all(color: Colors.white, width: 3),
                             ),
                           ),
-                        ))
-                    .toList(),
-              ),
-              
-              // Marqueur de position actuelle
-              if (_isLocationEnabled)
-                MarkerLayer(
-                  markers: [
-                    Marker(
-                      point: _currentPosition,
-                      width: 20,
-                      height: 20,
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: Colors.blue,
-                          shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white, width: 3),
                         ),
+                      ],
+                    ),
+                ],
+              ),
+
+              // Indicateur de chargement
+              if (controller.isLoading)
+                Container(
+                  color: Colors.black26,
+                  child: const Center(
+                    child: CircularProgressIndicator(),
+                  ),
+                ),
+
+              // Barre d'information sur les filtres actifs
+              if (_selectedCategory != null || 
+                  _minRating > 0 || 
+                  _onlyClaimedAssociations)
+                Positioned(
+                  top: 16,
+                  left: 16,
+                  right: 16,
+                  child: Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              '${filteredAssociations.length} association(s) affichée(s)',
+                              style: const TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                          TextButton(
+                            onPressed: () {
+                              setState(() {
+                                _selectedCategory = null;
+                                _minRating = 0.0;
+                                _onlyClaimedAssociations = false;
+                              });
+                            },
+                            child: const Text('Réinitialiser'),
+                          ),
+                        ],
                       ),
                     ),
-                  ],
+                  ),
                 ),
             ],
           ),
-
-          // Indicateur de chargement
-          if (_isLoading)
-            Container(
-              color: Colors.black26,
-              child: const Center(
-                child: CircularProgressIndicator(),
-              ),
-            ),
-
-          // Barre d'information sur les filtres actifs
-          if (_selectedCategory != null || 
-              _minRating > 0 || 
-              _onlyClaimedAssociations)
-            Positioned(
-              top: 16,
-              left: 16,
-              right: 16,
-              child: Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          '${_filteredAssociations.length} association(s) affichée(s)',
-                          style: const TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                      ),
-                      TextButton(
-                        onPressed: () {
-                          setState(() {
-                            _selectedCategory = null;
-                            _minRating = 0.0;
-                            _onlyClaimedAssociations = false;
-                          });
-                          _applyFilters();
-                        },
-                        child: const Text('Réinitialiser'),
-                      ),
-                    ],
-                  ),
+          floatingActionButton: Column(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              // Bouton pour centrer sur la position actuelle
+              if (_isLocationEnabled)
+                FloatingActionButton(
+                  heroTag: 'center',
+                  onPressed: () {
+                    _mapController.move(_currentPosition, 12.0);
+                  },
+                  child: const Icon(Icons.my_location),
                 ),
+              const SizedBox(height: 8),
+              
+              // Bouton pour recharger les associations
+              FloatingActionButton(
+                heroTag: 'refresh',
+                onPressed: _loadAssociations,
+                child: const Icon(Icons.refresh),
               ),
-            ),
-        ],
-      ),
-      floatingActionButton: Column(
-        mainAxisAlignment: MainAxisAlignment.end,
-        children: [
-          // Bouton pour centrer sur la position actuelle
-          if (_isLocationEnabled)
-            FloatingActionButton(
-              heroTag: 'center',
-              onPressed: () {
-                _mapController.move(_currentPosition, 12.0);
-              },
-              child: const Icon(Icons.my_location),
-            ),
-          const SizedBox(height: 8),
-          
-          // Bouton pour recharger les associations
-          FloatingActionButton(
-            heroTag: 'refresh',
-            onPressed: _loadAssociations,
-            child: const Icon(Icons.refresh),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 }

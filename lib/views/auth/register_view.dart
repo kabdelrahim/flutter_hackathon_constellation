@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:email_validator/email_validator.dart';
+import 'package:provider/provider.dart';
+import '../../controllers/auth_controller.dart';
 
 /// Vue d'inscription permettant aux nouveaux utilisateurs de créer un compte
 class RegisterView extends StatefulWidget {
@@ -52,16 +54,13 @@ class _RegisterViewState extends State<RegisterView> {
     });
 
     try {
-      // TODO: Implémenter l'inscription avec le contrôleur
-      // await context.read<AuthController>().register(
-      //   prenom: _prenomController.text.trim(),
-      //   nom: _nomController.text.trim(),
-      //   email: _emailController.text.trim(),
-      //   password: _passwordController.text,
-      // );
-      
-      // Simulation temporaire
-      await Future.delayed(const Duration(seconds: 2));
+      final authController = context.read<AuthController>();
+      await authController.register(
+        prenom: _prenomController.text.trim(),
+        nom: _nomController.text.trim(),
+        email: _emailController.text.trim(),
+        password: _passwordController.text,
+      );
       
       if (mounted) {
         // Navigation vers la page d'accueil après inscription réussie
