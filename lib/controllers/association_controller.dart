@@ -187,6 +187,46 @@ class AssociationController extends ChangeNotifier {
     await getAssociationById(_selectedAssociation!.id);
   }
 
+  /// Recherche des associations autour d'une position géographique
+  Future<void> searchNearby({
+    required double latitude,
+    required double longitude,
+    double radiusKm = 10.0,
+  }) async {
+    _setLoading(true);
+    _clearError();
+
+    try {
+      print('=== CONTROLLER SEARCHNEARBY ===');
+      print('Latitude: $latitude, Longitude: $longitude');
+      print('Rayon: ${radiusKm}km');
+      
+      final results = await _repository.searchNearby(
+        latitude: latitude,
+        longitude: longitude,
+        radiusKm: radiusKm,
+      );
+
+      print('Résultats reçus: ${results.length}');
+      results.forEach((assoc) {
+        if (assoc.hasCoordinates) {
+          print('  - ${assoc.nom} (${assoc.latitude}, ${assoc.longitude})');
+        }
+      });
+      
+      _associations = results;
+      _currentPage = 1;
+      _hasMoreResults = false; // Pas de pagination pour les recherches géographiques
+      _hasSearched = true;
+      notifyListeners();
+    } catch (e) {
+      print('Erreur searchNearby: $e');
+      _setError('Erreur lors de la recherche géographique: ${e.toString()}');
+    } finally {
+      _setLoading(false);
+    }
+  }
+
   /// Réinitialise tous les filtres
   void clearFilters() {
     _searchQuery = '';

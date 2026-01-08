@@ -40,33 +40,27 @@ class _HomeViewState extends State<HomeView> {
     setState(() => _fetchingNearby = true);
     try {
       final controller = context.read<AssociationController>();
-      // Récupérer beaucoup de résultats géocodés, puis trier côté client
-      await controller.searchAssociations(
-        query: null,
+      
+      // Utiliser searchNearby au lieu de searchAssociations
+      // avec un rayon de 15 km pour avoir assez de résultats
+      await controller.searchNearby(
         latitude: _currentPosition!.latitude,
         longitude: _currentPosition!.longitude,
-        withCoordinates: true,
-        maxDistanceKm: null, // pas de filtre dur côté API
-        resetPage: true,
+        radiusKm: 15.0,
       );
 
       if (!mounted) return;
 
-      final sorted = List<Association>.from(controller.associations)
-        ..retainWhere((a) => a.hasCoordinates)
-        ..sort((a, b) {
-          final distA = _calculateDistance(_currentPosition!, a);
-          final distB = _calculateDistance(_currentPosition!, b);
-          return distA.compareTo(distB);
-        });
+      // Les résultats sont déjà triés par distance par l'API
+      final sorted = controller.associations
+          .where((a) => a.hasCoordinates)
+          .toList();
 
       setState(() {
-        _nearbyAssociations = sorted
-            .take(10)
-            .toList(); // 10 pour la map, 3 pour les cards
+        _nearbyAssociations = sorted;
         _fetchingNearby = false;
       });
-    } catch (_) {
+    } catch (e) {
       setState(() => _fetchingNearby = false);
     }
   }

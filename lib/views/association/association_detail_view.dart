@@ -28,7 +28,16 @@ class _AssociationDetailViewState extends State<AssociationDetailView> {
       final args =
           ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
       if (args != null) {
+        // Cherche d'abord 'id', puis 'association'
         _associationId = args['id'] as String?;
+        if (_associationId == null && args.containsKey('association')) {
+          final association = args['association'] as Association?;
+          _associationId = association?.id;
+          if (_associationId != null && association != null) {
+            // Si on a l'association complète, la charger directement dans le controller
+            context.read<AssociationController>().selectAssociation(association);
+          }
+        }
         if (_associationId != null) {
           _loadAssociationDetails();
         }

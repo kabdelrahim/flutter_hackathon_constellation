@@ -67,16 +67,27 @@ class _AssociationListViewState extends State<AssociationListView> {
 
   Future<void> _loadAssociations({bool reset = false}) async {
     final controller = context.read<AssociationController>();
-    await controller.searchAssociations(
-      query: _searchController.text.trim().isEmpty ? null : _searchController.text.trim(),
-      ville: _villeController.text.trim().isEmpty ? null : _villeController.text.trim(),
-      codePostal: _codePostalController.text.trim().isEmpty ? null : _codePostalController.text.trim(),
-      departement: _departementController.text.trim().isEmpty ? null : _departementController.text.trim(),
-      latitude: _argLat,
-      longitude: _argLng,
-      withCoordinates: _argWithCoords,
-      resetPage: reset,
-    );
+    
+    // Si on a des coordonnées et une recherche géographique, utiliser searchNearby
+    if (_argWithCoords && _argLat != null && _argLng != null) {
+      await controller.searchNearby(
+        latitude: _argLat!,
+        longitude: _argLng!,
+        radiusKm: 20.0, // Rayon de 20 km pour la vue liste
+      );
+    } else {
+      // Sinon, utiliser la recherche classique
+      await controller.searchAssociations(
+        query: _searchController.text.trim().isEmpty ? null : _searchController.text.trim(),
+        ville: _villeController.text.trim().isEmpty ? null : _villeController.text.trim(),
+        codePostal: _codePostalController.text.trim().isEmpty ? null : _codePostalController.text.trim(),
+        departement: _departementController.text.trim().isEmpty ? null : _departementController.text.trim(),
+        latitude: _argLat,
+        longitude: _argLng,
+        withCoordinates: _argWithCoords,
+        resetPage: reset,
+      );
+    }
   }
 
   void _handleSearch(String query) {

@@ -47,13 +47,13 @@ Route<dynamic>? onGenerateRoute(RouteSettings settings) {
       );
       
     case '/association-detail':
-      if (args != null && args.containsKey('id')) {
+      if (args != null && (args.containsKey('id') || args.containsKey('association'))) {
         return MaterialPageRoute(
           builder: (context) => const AssociationDetailView(),
           settings: settings,
         );
       }
-      // Redirection si pas d'ID
+      // Redirection si pas d'ID ou association
       return MaterialPageRoute(
         builder: (context) => const HomeView(),
       );

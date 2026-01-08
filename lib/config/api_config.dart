@@ -10,10 +10,7 @@ class ApiConfig {
   static const String rnaSearchEndpoint = '/catalog/datasets/$rnaDataset/records';
   static const String rnaExportsEndpoint = '/catalog/datasets/$rnaDataset/exports';
   static const String rnaFacetsEndpoint = '/catalog/datasets/$rnaDataset/facets';
-
-  // TODO: Remplacer par l'URL de votre backend
-  // Pour le développement local, utiliser l'émulateur Android: http://10.0.2.2:3000
-  // Pour iOS: http://localhost:3000
+  
   static const String backendBaseUrl = 'http://localhost:3000/api';
 
   // Endpoints Backend Constellation

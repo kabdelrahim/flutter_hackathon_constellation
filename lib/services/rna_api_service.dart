@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math';
 import 'package:http/http.dart' as http;
 import '../config/api_config.dart';
 import '../models/association.dart';
@@ -205,48 +206,98 @@ class RnaApiService {
     bool includeInactive = false,
   }) async {
     try {
-      // Construire la requête géospatiale ODSQL
-      final geoDistance = 'geo_distance("geo_point_2d", $latitude, $longitude, "${radiusKm}km")';
-      final status = includeInactive ? '' : ' AND position = "Active"';
-      final where = '$geoDistance$status';
+      // Construire les paramètres de requête avec geofilter.distance
+      final radiusMeters = (radiusKm * 1000).toInt();
       
       final queryParams = <String, String>{
-        'where': where,
+        'geofilter.distance': '$latitude,$longitude,$radiusMeters',
         'limit': perPage.clamp(1, ApiConfig.maxPageSize).toString(),
         'offset': '0',
-        'order_by': 'geo_distance("geo_point_2d", $latitude, $longitude)',
       };
+      
+      // Ajouter le filtre de statut si nécessaire
+      if (!includeInactive) {
+        queryParams['where'] = 'position = "Active"';
+      }
       
       final uri = Uri.parse('${ApiConfig.rnaBaseUrl}${ApiConfig.rnaSearchEndpoint}')
           .replace(queryParameters: queryParams);
-      
+    
       final response = await _client
           .get(uri)
           .timeout(ApiConfig.connectionTimeout);
       
+      print('Status code: ${response.statusCode}');
+      print('Response body length: ${response.body.length}');
+      
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
+        
+        // DEBUG: Afficher le nombre de résultats
+        print('Total count: ${data['total_count'] ?? 'N/A'}');
         
         List<dynamic> associationsList = [];
         if (data is Map && data.containsKey('results')) {
           associationsList = (data['results'] as List?) ?? [];
+          print('Nombre de résultats: ${associationsList.length}');
         }
         
-        return associationsList
+        final results = associationsList
             .map((json) => Association.fromRnaJson(json as Map<String, dynamic>))
             .toList();
+        
+        print('Associations retournées: ${results.length}');
+        
+        // DEBUG: Afficher les associations avec leurs coordonnées et distances
+        for (var assoc in results.take(5)) {
+          if (assoc.hasCoordinates) {
+            final distance = _calculateDistance(
+              latitude, longitude, 
+              assoc.latitude!, assoc.longitude!
+            );
+            print('  - ${assoc.nom} (${assoc.ville}): ${distance.toStringAsFixed(1)}km - GPS(${assoc.latitude}, ${assoc.longitude})');
+          } else {
+            print('  - ${assoc.nom} (${assoc.ville}): PAS DE COORDONNÉES');
+          }
+        }
+        
+        return results;
       } else if (response.statusCode == 404) {
+        print('Aucun résultat trouvé (404)');
         return [];
       } else {
+        print('Erreur HTTP: ${response.statusCode}');
+        print('Response: ${response.body}');
         throw RnaApiException(
           'Erreur lors de la recherche géographique: ${response.statusCode}',
           response.statusCode,
         );
       }
     } catch (e) {
+      print('Exception: $e');
       if (e is RnaApiException) rethrow;
       throw RnaApiException('Erreur de connexion à l\'API RNA (recherche géographique): $e');
     }
+  }
+  
+  /// Calcule la distance en km entre deux points GPS (formule de Haversine)
+  double _calculateDistance(double lat1, double lon1, double lat2, double lon2) {
+    const double earthRadius = 6371; // Rayon de la Terre en km
+    final dLat = _degreesToRadians(lat2 - lat1);
+    final dLon = _degreesToRadians(lon2 - lon1);
+    
+    final a = sin(dLat / 2) * sin(dLat / 2) +
+        cos(_degreesToRadians(lat1)) *
+        cos(_degreesToRadians(lat2)) *
+        sin(dLon / 2) *
+        sin(dLon / 2);
+    
+    final c = 2 * atan2(sqrt(a), sqrt(1 - a));
+    return earthRadius * c;
+  }
+  
+  double _degreesToRadians(double degrees) {
+    return degrees * pi / 180;
   }
   
   void dispose() {
