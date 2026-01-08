@@ -2,8 +2,9 @@ import 'package:flutter/foundation.dart';
 import '../models/user.dart';
 import '../services/auth_service.dart';
 
-/// Contrôleur pour la gestion de l'authentification
-/// Utilise Provider pour notifier les changements d'état
+/// Contrôleur pour la gestion de l'authentification utilisateur
+/// Gère la connexion, l'inscription, la déconnexion et la restauration de session
+/// Utilise Provider pour notifier les changements d'état à l'interface
 class AuthController extends ChangeNotifier {
   final AuthService _authService;
 
@@ -31,7 +32,11 @@ class AuthController extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Connexion utilisateur
+  /// Connecte un utilisateur avec son email et mot de passe
+  /// Met à jour l'état du contrôleur et notifie les écouteurs
+  /// @param email Adresse email de l'utilisateur
+  /// @param password Mot de passe de l'utilisateur
+  /// @return true si la connexion réussit, false sinon
   Future<bool> login(String email, String password) async {
     _setLoading(true);
     _clearError();

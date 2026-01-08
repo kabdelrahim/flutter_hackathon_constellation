@@ -13,6 +13,9 @@ class RnaApiService {
   RnaApiService({http.Client? client}) : _client = client ?? http.Client();
   
   /// Construit une requête ODSQL avec les filtres fournis
+  /// ODSQL est le langage de requête de l'API Opendatasoft/HuWise
+  /// Génère une clause WHERE avec les conditions appropriées
+  /// @return Chaîne de requête ODSQL, ou chaîne vide si aucun filtre
   String _buildOdsqlQuery({
     String? query,
     String? ville,
@@ -73,15 +76,20 @@ class RnaApiService {
   }
   
   /// Recherche des associations selon différents critères en utilisant ODSQL
+  /// Interroge l'API HuWise (Opendatasoft) du Répertoire National des Associations
   /// 
   /// Paramètres disponibles:
-  /// - [query]: Recherche textuelle (nom, sigle, objet)
-  /// - [ville]: Filtrer par ville
+  /// - [query]: Recherche textuelle (nom, sigle, objet de l'association)
+  /// - [ville]: Filtrer par nom de commune
   /// - [codePostal]: Filtrer par code postal
-  /// - [departement]: Filtrer par département
-  /// - [page]: Numéro de page (défaut: 1)
-  /// - [perPage]: Résultats par page (défaut: 20, max: 100)
+  /// - [departement]: Filtrer par code ou nom de département
+  /// - [regionCode]: Filtrer par code région
+  /// - [withCoordinates]: Ne retourner que les associations géolocalisées
+  /// - [status]: Filtrer par statut (Active, Dissoute, etc.)
+  /// - [page]: Numéro de page pour la pagination (défaut: 1)
+  /// - [perPage]: Nombre de résultats par page (défaut: 20, max: 100)
   /// - [includeInactive]: Inclure les associations dissoutes (défaut: false)
+  /// @return Liste des associations correspondant aux critères
   Future<List<Association>> searchAssociations({
     String? query,
     String? ville,
@@ -227,60 +235,40 @@ class RnaApiService {
           .get(uri)
           .timeout(ApiConfig.connectionTimeout);
       
-      print('Status code: ${response.statusCode}');
-      print('Response body length: ${response.body.length}');
-      
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        
-        // DEBUG: Afficher le nombre de résultats
-        print('Total count: ${data['total_count'] ?? 'N/A'}');
         
         List<dynamic> associationsList = [];
         if (data is Map && data.containsKey('results')) {
           associationsList = (data['results'] as List?) ?? [];
-          print('Nombre de résultats: ${associationsList.length}');
         }
         
         final results = associationsList
             .map((json) => Association.fromRnaJson(json as Map<String, dynamic>))
             .toList();
         
-        print('Associations retournées: ${results.length}');
-        
-        // DEBUG: Afficher les associations avec leurs coordonnées et distances
-        for (var assoc in results.take(5)) {
-          if (assoc.hasCoordinates) {
-            final distance = _calculateDistance(
-              latitude, longitude, 
-              assoc.latitude!, assoc.longitude!
-            );
-            print('  - ${assoc.nom} (${assoc.ville}): ${distance.toStringAsFixed(1)}km - GPS(${assoc.latitude}, ${assoc.longitude})');
-          } else {
-            print('  - ${assoc.nom} (${assoc.ville}): PAS DE COORDONNÉES');
-          }
-        }
-        
         return results;
       } else if (response.statusCode == 404) {
-        print('Aucun résultat trouvé (404)');
         return [];
       } else {
-        print('Erreur HTTP: ${response.statusCode}');
-        print('Response: ${response.body}');
         throw RnaApiException(
           'Erreur lors de la recherche géographique: ${response.statusCode}',
           response.statusCode,
         );
       }
     } catch (e) {
-      print('Exception: $e');
       if (e is RnaApiException) rethrow;
       throw RnaApiException('Erreur de connexion à l\'API RNA (recherche géographique): $e');
     }
   }
   
-  /// Calcule la distance en km entre deux points GPS (formule de Haversine)
+  /// Calcule la distance en kilomètres entre deux points GPS
+  /// Utilise la formule de Haversine pour calculer la distance sur une sphère
+  /// @param lat1 Latitude du premier point
+  /// @param lon1 Longitude du premier point
+  /// @param lat2 Latitude du second point
+  /// @param lon2 Longitude du second point
+  /// @return La distance en kilomètres
   double _calculateDistance(double lat1, double lon1, double lat2, double lon2) {
     const double earthRadius = 6371; // Rayon de la Terre en km
     final dLat = _degreesToRadians(lat2 - lat1);
@@ -296,6 +284,9 @@ class RnaApiService {
     return earthRadius * c;
   }
   
+  /// Convertit des degrés en radians
+  /// @param degrees Angle en degrés
+  /// @return Angle en radians
   double _degreesToRadians(double degrees) {
     return degrees * pi / 180;
   }

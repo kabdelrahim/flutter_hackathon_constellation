@@ -34,6 +34,9 @@ class _HomeViewState extends State<HomeView> {
     _initLocation();
   }
 
+  /// Récupère les associations proches de la position actuelle de l'utilisateur
+  /// Utilise la géolocalisation pour trouver les associations dans un rayon de 15km
+  /// Les résultats sont affichés sur la carte et dans les cards de prévisualisation
   Future<void> _fetchNearbyAssociations() async {
     // Attendre la géoloc
     if (_currentPosition == null || !mounted) return;
@@ -65,6 +68,11 @@ class _HomeViewState extends State<HomeView> {
     }
   }
 
+  /// Calcule la distance entre la position actuelle de l'utilisateur et une association
+  /// Utilise Geolocator.distanceBetween pour calculer la distance géodésique
+  /// @param pos1 Position de l'utilisateur (LatLng)
+  /// @param assoc Association dont on veut calculer la distance
+  /// @return Distance en kilomètres, ou infinity si l'association n'a pas de coordonnées
   double _calculateDistance(LatLng pos1, Association assoc) {
     if (!assoc.hasCoordinates) return double.infinity;
     return Geolocator.distanceBetween(
@@ -76,6 +84,9 @@ class _HomeViewState extends State<HomeView> {
         1000;
   }
 
+  /// Initialise la géolocalisation de l'utilisateur
+  /// Vérifie les permissions, demande l'autorisation si nécessaire,
+  /// puis récupère la position actuelle et lance la recherche des associations proches
   Future<void> _initLocation() async {
     setState(() => _locating = true);
     try {
@@ -104,6 +115,8 @@ class _HomeViewState extends State<HomeView> {
     }
   }
 
+  /// Gère la soumission de la barre de recherche
+  /// Redirige vers la vue de liste des associations avec le terme de recherche
   void _handleSearch() {
     final query = _searchController.text.trim();
     Navigator.pushNamed(

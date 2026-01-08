@@ -3,7 +3,9 @@ import '../models/comment.dart';
 import '../services/backend_service.dart';
 import '../services/auth_service.dart';
 
-/// Contrôleur pour la gestion des commentaires
+/// Contrôleur pour la gestion des commentaires sur les associations
+/// Permet de charger, ajouter et supprimer des commentaires
+/// Les commentaires sont stockés localement par association pour optimiser les performances
 class CommentController extends ChangeNotifier {
   final BackendService _backendService;
   final AuthService _authService;
@@ -24,6 +26,8 @@ class CommentController extends ChangeNotifier {
   }
 
   /// Charge les commentaires d'une association depuis le backend
+  /// Met en cache les commentaires localement pour éviter des requêtes répétées
+  /// @param associationId Identifiant RNA de l'association
   Future<void> loadComments(String associationId) async {
     _setLoading(true);
     _clearError();
@@ -39,7 +43,13 @@ class CommentController extends ChangeNotifier {
     }
   }
 
-  /// Ajoute un nouveau commentaire
+  /// Ajoute un nouveau commentaire pour une association
+  /// Nécessite que l'utilisateur soit connecté
+  /// Le commentaire est inséré en début de liste pour affichage immédiat
+  /// @param associationId Identifiant RNA de l'association
+  /// @param contenu Texte du commentaire
+  /// @param note Note optionnelle (1-5)
+  /// @return true si l'ajout réussit, false sinon
   Future<bool> addComment({
     required String associationId,
     required String contenu,

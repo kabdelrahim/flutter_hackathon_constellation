@@ -3,7 +3,9 @@ import '../models/rating.dart';
 import '../services/backend_service.dart';
 import '../services/auth_service.dart';
 
-/// Contrôleur pour la gestion des notes
+/// Contrôleur pour la gestion des notes (ratings) des associations
+/// Gère les statistiques de notation (moyenne, nombre d'avis) et les notes individuelles
+/// Permet aux utilisateurs connectés de noter les associations
 class RatingController extends ChangeNotifier {
   final BackendService _backendService;
   final AuthService _authService;
@@ -30,6 +32,9 @@ class RatingController extends ChangeNotifier {
   }
 
   /// Charge les statistiques de notation d'une association
+  /// Récupère la note moyenne, le nombre d'avis et la distribution des notes
+  /// Charge aussi la note de l'utilisateur connecté si disponible
+  /// @param associationId Identifiant RNA de l'association
   Future<void> loadRatingStats(String associationId) async {
     _setLoading(true);
     _clearError();
@@ -62,7 +67,13 @@ class RatingController extends ChangeNotifier {
     }
   }
 
-  /// Ajoute ou modifie la note de l'utilisateur
+  /// Ajoute ou modifie la note de l'utilisateur pour une association
+  /// Nécessite que l'utilisateur soit connecté
+  /// La note doit être comprise entre 1 et 5
+  /// Met à jour les statistiques après notation
+  /// @param associationId Identifiant RNA de l'association
+  /// @param note Note de 1 à 5 étoiles
+  /// @return true si la notation réussit, false sinon
   Future<bool> rateAssociation({
     required String associationId,
     required int note,

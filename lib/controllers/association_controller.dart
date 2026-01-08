@@ -54,6 +54,20 @@ class AssociationController extends ChangeNotifier {
   String? get status => _status;
 
   /// Recherche d'associations avec les filtres actuels
+  /// Permet une recherche multicritères avec pagination
+  /// Supporte la recherche textuelle, géographique et par critères administratifs
+  /// @param query Terme de recherche textuelle (nom, sigle, objet)
+  /// @param minRating Note minimale (filtre sur les données enrichies)
+  /// @param ville Filtrer par nom de ville
+  /// @param codePostal Filtrer par code postal
+  /// @param departement Filtrer par département
+  /// @param regionCode Filtrer par code région
+  /// @param latitude Latitude pour tri par distance (optionnel)
+  /// @param longitude Longitude pour tri par distance (optionnel)
+  /// @param maxDistanceKm Distance maximale en km (avec latitude/longitude)
+  /// @param withCoordinates Ne retourner que les associations avec coordonnées GPS
+  /// @param status Statut de l'association (Active, Dissoute, etc.)
+  /// @param resetPage Réinitialiser la pagination (true par défaut)
   Future<void> searchAssociations({
     String? query,
     double? minRating,
@@ -187,7 +201,12 @@ class AssociationController extends ChangeNotifier {
     await getAssociationById(_selectedAssociation!.id);
   }
 
-  /// Recherche des associations autour d'une position géographique
+  /// Recherche des associations autour d'une position géographique donnée
+  /// Utilise l'API RNA avec le filtre geofilter.distance pour obtenir
+  /// les associations dans un rayon spécifié
+  /// @param latitude Latitude de la position de recherche
+  /// @param longitude Longitude de la position de recherche
+  /// @param radiusKm Rayon de recherche en kilomètres (défaut: 10km)
   Future<void> searchNearby({
     required double latitude,
     required double longitude,
@@ -197,22 +216,11 @@ class AssociationController extends ChangeNotifier {
     _clearError();
 
     try {
-      print('=== CONTROLLER SEARCHNEARBY ===');
-      print('Latitude: $latitude, Longitude: $longitude');
-      print('Rayon: ${radiusKm}km');
-      
       final results = await _repository.searchNearby(
         latitude: latitude,
         longitude: longitude,
         radiusKm: radiusKm,
       );
-
-      print('Résultats reçus: ${results.length}');
-      results.forEach((assoc) {
-        if (assoc.hasCoordinates) {
-          print('  - ${assoc.nom} (${assoc.latitude}, ${assoc.longitude})');
-        }
-      });
       
       _associations = results;
       _currentPage = 1;
@@ -220,7 +228,6 @@ class AssociationController extends ChangeNotifier {
       _hasSearched = true;
       notifyListeners();
     } catch (e) {
-      print('Erreur searchNearby: $e');
       _setError('Erreur lors de la recherche géographique: ${e.toString()}');
     } finally {
       _setLoading(false);

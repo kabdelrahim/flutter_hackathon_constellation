@@ -118,7 +118,12 @@ class AssociationRepository {
     }
   }
   
-  /// Fusionne les données RNA et enrichies
+  /// Fusionne les données RNA (OpenData) et les données enrichies par la communauté
+  /// Conserve les données officielles RNA (nom, adresse, statut, etc.)
+  /// et ajoute les données enrichies (description, notes, photos, revendication, etc.)
+  /// @param rna Données officielles depuis le Répertoire National des Associations
+  /// @param enriched Données enrichies par la communauté depuis notre backend
+  /// @return Association fusionnée avec toutes les informations
   Association _mergeAssociationData(Association rna, Association enriched) {
     return Association(
       id: rna.id,
@@ -156,7 +161,13 @@ class AssociationRepository {
     );
   }
   
-  /// Recherche des associations autour d'une position géographique
+  /// Recherche des associations à proximité d'une position GPS
+  /// Combine les données RNA (OpenData) avec les données enrichies du backend
+  /// Les résultats sont déjà triés par distance par l'API RNA
+  /// @param latitude Latitude du centre de recherche
+  /// @param longitude Longitude du centre de recherche
+  /// @param radiusKm Rayon de recherche en kilomètres
+  /// @return Liste des associations dans le rayon spécifié, enrichies avec les données communautaires
   Future<List<Association>> searchNearby({
     required double latitude,
     required double longitude,
