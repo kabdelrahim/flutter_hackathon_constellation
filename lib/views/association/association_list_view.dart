@@ -93,14 +93,7 @@ class _AssociationListViewState extends State<AssociationListView> {
   void _handleSearch(String query) {
     _debounce?.cancel();
     _debounce = Timer(const Duration(milliseconds: 400), () {
-      final hasAnyText = _searchController.text.trim().isNotEmpty ||
-          _villeController.text.trim().isNotEmpty ||
-          _codePostalController.text.trim().isNotEmpty ||
-          _departementController.text.trim().isNotEmpty;
-      
-      if (hasAnyText) {
-        _loadAssociations();
-      }
+      _loadAssociations(reset: true);
     });
   }
 
@@ -296,6 +289,12 @@ class _AssociationListViewState extends State<AssociationListView> {
     return RefreshIndicator(
       onRefresh: () => controller.searchAssociations(
         query: _searchController.text.trim().isEmpty ? null : _searchController.text.trim(),
+        ville: _villeController.text.trim().isEmpty ? null : _villeController.text.trim(),
+        codePostal: _codePostalController.text.trim().isEmpty ? null : _codePostalController.text.trim(),
+        departement: _departementController.text.trim().isEmpty ? null : _departementController.text.trim(),
+        latitude: _argLat,
+        longitude: _argLng,
+        withCoordinates: _argWithCoords,
         resetPage: true,
       ),
       child: ListView.builder(

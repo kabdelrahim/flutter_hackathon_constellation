@@ -85,17 +85,27 @@ class AssociationController extends ChangeNotifier {
     if (resetPage) {
       _associations = [];
       _hasMoreResults = true;
+      
+      // Réinitialiser les filtres lors d'une nouvelle recherche
+      _searchQuery = query ?? '';
+      _minRating = minRating;
+      _ville = ville;
+      _codePostal = codePostal;
+      _departement = departement;
+      _regionCode = regionCode;
+      _withCoordinates = withCoordinates ?? false;
+      _status = status;
+    } else {
+      // Pagination: conserver les filtres existants
+      if (query != null) _searchQuery = query;
+      if (minRating != null) _minRating = minRating;
+      if (ville != null) _ville = ville;
+      if (codePostal != null) _codePostal = codePostal;
+      if (departement != null) _departement = departement;
+      if (regionCode != null) _regionCode = regionCode;
+      if (withCoordinates != null) _withCoordinates = withCoordinates;
+      if (status != null) _status = status;
     }
-
-    // Mise à jour des filtres
-    if (query != null) _searchQuery = query;
-    if (minRating != null) _minRating = minRating;
-    if (ville != null) _ville = ville;
-    if (codePostal != null) _codePostal = codePostal;
-    if (departement != null) _departement = departement;
-    if (regionCode != null) _regionCode = regionCode;
-    if (withCoordinates != null) _withCoordinates = withCoordinates;
-    if (status != null) _status = status;
 
     // Marquer que l'utilisateur a lancé une recherche s'il y a un terme ou un filtre
     final hasAnyFilter = (_searchQuery.isNotEmpty) ||

@@ -37,10 +37,10 @@ class RnaApiService {
           ')');
     }
     
-    // Filtre par ville
+    // Filtre par ville (recherche partielle, LIKE est insensible à la casse dans ODSQL)
     if (ville != null && ville.isNotEmpty) {
       final escapedVille = ville.replaceAll('"', '\\"');
-      conditions.add('com_name_asso = "$escapedVille"');
+      conditions.add('com_name_asso like "%$escapedVille%"');
     }
     
     // Filtre par code postal
@@ -48,9 +48,10 @@ class RnaApiService {
       conditions.add('pc_address_asso = "$codePostal"');
     }
     
-    // Filtre par département
+    // Filtre par département (parenthèses pour éviter les problèmes de priorité avec AND)
     if (departement != null && departement.isNotEmpty) {
-      conditions.add('dep_code = "$departement" OR dep_name = "$departement"');
+      final escapedDep = departement.replaceAll('"', '\\"');
+      conditions.add('(dep_code = "$escapedDep" OR dep_name like "%$escapedDep%")');
     }
 
     // Filtre par région
