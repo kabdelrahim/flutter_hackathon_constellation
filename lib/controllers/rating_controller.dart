@@ -37,12 +37,12 @@ class RatingController extends ChangeNotifier {
     try {
       final stats = await _backendService.getRatingStats(associationId);
       _statsByAssociation[associationId] = stats;
-      
+
       // Récupère aussi la note de l'utilisateur si connecté
       if (_authService.currentUser != null) {
         await _loadUserRating(associationId);
       }
-      
+
       notifyListeners();
     } catch (e) {
       _setError('Erreur lors du chargement des notes: ${e.toString()}');

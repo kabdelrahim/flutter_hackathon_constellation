@@ -15,11 +15,11 @@ import 'repositories/association_repository.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
+
   // Initialisation des dépendances
   final prefs = await SharedPreferences.getInstance();
   final httpClient = http.Client();
-  
+
   // Services
   final authService = AuthService(
     client: httpClient,
@@ -30,7 +30,7 @@ void main() async {
     client: httpClient,
     authService: authService,
   );
-  
+
   // Repository
   final associationRepository = AssociationRepository(
     rnaApiService: rnaApiService,

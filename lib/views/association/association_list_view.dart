@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../models/association.dart';
@@ -13,7 +14,11 @@ class AssociationListView extends StatefulWidget {
 
 class _AssociationListViewState extends State<AssociationListView> {
   final _searchController = TextEditingController();
+  final _villeController = TextEditingController();
+  final _codePostalController = TextEditingController();
+  final _departementController = TextEditingController();
   final _scrollController = ScrollController();
+  Timer? _debounce;
   String? _initialQuery;
 
   @override
@@ -25,17 +30,21 @@ class _AssociationListViewState extends State<AssociationListView> {
       final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
       if (args != null) {
         _initialQuery = args['query'] as String?;
-        if (_initialQuery != null) {
+        if (_initialQuery != null && _initialQuery!.trim().isNotEmpty) {
           _searchController.text = _initialQuery!;
+          _loadAssociations();
         }
       }
-      _loadAssociations();
     });
   }
 
   @override
   void dispose() {
+    _debounce?.cancel();
     _searchController.dispose();
+    _villeController.dispose();
+    _codePostalController.dispose();
+    _departementController.dispose();
     _scrollController.dispose();
     super.dispose();
   }
@@ -53,13 +62,26 @@ class _AssociationListViewState extends State<AssociationListView> {
   Future<void> _loadAssociations() async {
     final controller = context.read<AssociationController>();
     await controller.searchAssociations(
-      query: _searchController.text.trim(),
+      query: _searchController.text.trim().isEmpty ? null : _searchController.text.trim(),
+      ville: _villeController.text.trim().isEmpty ? null : _villeController.text.trim(),
+      codePostal: _codePostalController.text.trim().isEmpty ? null : _codePostalController.text.trim(),
+      departement: _departementController.text.trim().isEmpty ? null : _departementController.text.trim(),
       resetPage: true,
     );
   }
 
   void _handleSearch(String query) {
-    _loadAssociations();
+    _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 400), () {
+      final hasAnyText = _searchController.text.trim().isNotEmpty ||
+          _villeController.text.trim().isNotEmpty ||
+          _codePostalController.text.trim().isNotEmpty ||
+          _departementController.text.trim().isNotEmpty;
+      
+      if (hasAnyText) {
+        _loadAssociations();
+      }
+    });
   }
 
   @override
@@ -73,12 +95,6 @@ class _AssociationListViewState extends State<AssociationListView> {
           onPressed: () => Navigator.pop(context),
           icon: const Icon(Icons.arrow_back_rounded),
         ),
-        actions: [
-          IconButton(
-            onPressed: () => Navigator.pushNamed(context, '/map'),
-            icon: const Icon(Icons.map_rounded),
-          ),
-        ],
       ),
       body: Column(
         children: [
@@ -95,7 +111,9 @@ class _AssociationListViewState extends State<AssociationListView> {
                 }
 
                 if (controller.associations.isEmpty) {
-                  return _buildEmptyState();
+                  return controller.hasSearched
+                      ? _buildEmptyState()
+                      : _buildPreSearchState();
                 }
 
                 return _buildAssociationsList(controller);
@@ -114,8 +132,9 @@ class _AssociationListViewState extends State<AssociationListView> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Rechercher', style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800)),
+          const Text('Recherche croisée', style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800)),
           const SizedBox(height: 16),
+          // Champ nom/mot-clé
           Container(
             decoration: BoxDecoration(
               color: Colors.white,
@@ -125,8 +144,10 @@ class _AssociationListViewState extends State<AssociationListView> {
             child: TextField(
               controller: _searchController,
               onChanged: _handleSearch,
+              onSubmitted: (_) => _loadAssociations(),
+              textInputAction: TextInputAction.search,
               decoration: InputDecoration(
-                hintText: 'Nom, ville, mot-cle...',
+                hintText: 'Nom ou mot-clé...',
                 hintStyle: TextStyle(color: Colors.grey[400]),
                 prefixIcon: Icon(Icons.search_rounded, color: Colors.grey[400]),
                 suffixIcon: _searchController.text.isNotEmpty
@@ -143,29 +164,138 @@ class _AssociationListViewState extends State<AssociationListView> {
               ),
             ),
           ),
+          const SizedBox(height: 12),
+          // Champ ville
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.grey[200]!),
+            ),
+            child: TextField(
+              controller: _villeController,
+              onChanged: _handleSearch,
+              onSubmitted: (_) => _loadAssociations(),
+              textInputAction: TextInputAction.search,
+              decoration: InputDecoration(
+                hintText: 'Ville...',
+                hintStyle: TextStyle(color: Colors.grey[400]),
+                prefixIcon: Icon(Icons.location_city_rounded, color: Colors.grey[400]),
+                suffixIcon: _villeController.text.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(Icons.clear_rounded),
+                        onPressed: () {
+                          _villeController.clear();
+                          _handleSearch('');
+                        },
+                      )
+                    : null,
+                border: InputBorder.none,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          // Ligne code postal + département
+          Row(
+            children: [
+              Expanded(
+                flex: 2,
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.grey[200]!),
+                  ),
+                  child: TextField(
+                    controller: _codePostalController,
+                    onChanged: _handleSearch,
+                    onSubmitted: (_) => _loadAssociations(),
+                    keyboardType: TextInputType.number,
+                    textInputAction: TextInputAction.search,
+                    decoration: InputDecoration(
+                      hintText: 'Code postal...',
+                      hintStyle: TextStyle(color: Colors.grey[400]),
+                      prefixIcon: Icon(Icons.pin_drop_rounded, color: Colors.grey[400]),
+                      suffixIcon: _codePostalController.text.isNotEmpty
+                          ? IconButton(
+                              icon: const Icon(Icons.clear_rounded, size: 20),
+                              onPressed: () {
+                                _codePostalController.clear();
+                                _handleSearch('');
+                              },
+                            )
+                          : null,
+                      border: InputBorder.none,
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                flex: 3,
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.grey[200]!),
+                  ),
+                  child: TextField(
+                    controller: _departementController,
+                    onChanged: _handleSearch,
+                    onSubmitted: (_) => _loadAssociations(),
+                    textInputAction: TextInputAction.search,
+                    decoration: InputDecoration(
+                      hintText: 'Département...',
+                      hintStyle: TextStyle(color: Colors.grey[400]),
+                      prefixIcon: Icon(Icons.map_rounded, color: Colors.grey[400]),
+                      suffixIcon: _departementController.text.isNotEmpty
+                          ? IconButton(
+                              icon: const Icon(Icons.clear_rounded, size: 20),
+                              onPressed: () {
+                                _departementController.clear();
+                                _handleSearch('');
+                              },
+                            )
+                          : null,
+                      border: InputBorder.none,
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ],
       ),
     );
   }
 
   Widget _buildAssociationsList(AssociationController controller) {
-    return ListView.builder(
-      controller: _scrollController,
-      padding: const EdgeInsets.all(16),
-      itemCount: controller.associations.length + (controller.isLoading ? 1 : 0),
-      itemBuilder: (context, index) {
-        if (index == controller.associations.length) {
-          return const Center(
-            child: Padding(
-              padding: EdgeInsets.all(16),
-              child: CircularProgressIndicator(),
-            ),
-          );
-        }
+    return RefreshIndicator(
+      onRefresh: () => controller.searchAssociations(
+        query: _searchController.text.trim().isEmpty ? null : _searchController.text.trim(),
+        resetPage: true,
+      ),
+      child: ListView.builder(
+        controller: _scrollController,
+        padding: const EdgeInsets.all(16),
+        itemCount: controller.associations.length + (controller.isLoading ? 1 : 0),
+        itemBuilder: (context, index) {
+          if (index == controller.associations.length) {
+            return const Center(
+              child: Padding(
+                padding: EdgeInsets.all(16),
+                child: CircularProgressIndicator(),
+              ),
+            );
+          }
 
-        final association = controller.associations[index];
-        return _buildAssociationCard(association);
-      },
+          final association = controller.associations[index];
+          return _buildAssociationCard(association);
+        },
+      ),
     );
   }
 
@@ -288,6 +418,31 @@ class _AssociationListViewState extends State<AssociationListView> {
               onPressed: _loadAssociations,
               child: const Text('Reessayer'),
             ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPreSearchState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: const Color(0xFF2563EB).withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(Icons.search_rounded, size: 48, color: Color(0xFF2563EB)),
+            ),
+            const SizedBox(height: 16),
+            const Text('Commencez une recherche', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+            const SizedBox(height: 8),
+            Text('Saisissez un nom, une ville ou ouvrez les filtres', style: TextStyle(color: Colors.grey[600]), textAlign: TextAlign.center),
           ],
         ),
       ),

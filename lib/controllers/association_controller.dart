@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import '../models/association.dart';
 import '../repositories/association_repository.dart';
+import '../config/api_config.dart';
 
 /// Contrôleur pour la gestion des associations
 /// Gère la recherche, le filtrage et le cache des associations
@@ -24,8 +25,13 @@ class AssociationController extends ChangeNotifier {
   bool _withCoordinates = false;
   String? _status;
 
-  // Pagination - supprimé car non utilisé dans le repository
+  // Pagination
+  int _currentPage = 1;
+  int _pageSize = ApiConfig.defaultPageSize;
   bool _hasMoreResults = true;
+
+  // Etat "recherche effectuée" pour afficher l'état pré-recherche dans la vue
+  bool _hasSearched = false;
 
   // Getters
   List<Association> get associations => _associations;
@@ -33,6 +39,9 @@ class AssociationController extends ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
   bool get hasMoreResults => _hasMoreResults;
+  bool get hasSearched => _hasSearched;
+  int get currentPage => _currentPage;
+  int get pageSize => _pageSize;
 
   String get searchQuery => _searchQuery;
   double? get minRating => _minRating;
@@ -70,10 +79,26 @@ class AssociationController extends ChangeNotifier {
     if (withCoordinates != null) _withCoordinates = withCoordinates;
     if (status != null) _status = status;
 
+    // Marquer que l'utilisateur a lancé une recherche s'il y a un terme ou un filtre
+    final hasAnyFilter = (_searchQuery.isNotEmpty) ||
+        (_minRating != null) ||
+        (_ville != null && _ville!.isNotEmpty) ||
+        (_codePostal != null && _codePostal!.isNotEmpty) ||
+        (_departement != null && _departement!.isNotEmpty) ||
+        (_regionCode != null && _regionCode!.isNotEmpty) ||
+        (_withCoordinates) ||
+        (_status != null && _status!.isNotEmpty);
+    if (hasAnyFilter) {
+      _hasSearched = true;
+    }
+
     _setLoading(true);
     _clearError();
 
     try {
+      // Déterminer la page à charger
+      final requestedPage = resetPage ? 1 : (_currentPage + 1);
+
       final results = await _repository.searchAssociations(
         query: _searchQuery.isEmpty ? null : _searchQuery,
         ville: _ville,
@@ -83,15 +108,19 @@ class AssociationController extends ChangeNotifier {
         withCoordinates: _withCoordinates,
         status: _status,
         minRating: _minRating,
+        page: requestedPage,
+        perPage: _pageSize,
       );
 
       if (resetPage) {
         _associations = results;
+        _currentPage = 1;
       } else {
         _associations.addAll(results);
+        _currentPage = requestedPage;
       }
 
-      _hasMoreResults = results.length >= 20; // 20 par page par défaut
+      _hasMoreResults = results.length >= _pageSize;
       notifyListeners();
     } catch (e) {
       _setError('Erreur lors de la recherche: ${e.toString()}');
@@ -101,7 +130,6 @@ class AssociationController extends ChangeNotifier {
   }
 
   /// Charge plus de résultats (pagination)
-  /// Note: La pagination n'est pas encore implémentée dans le repository
   Future<void> loadMoreResults() async {
     if (!_hasMoreResults || _isLoading) return;
 
@@ -146,6 +174,10 @@ class AssociationController extends ChangeNotifier {
     _regionCode = null;
     _withCoordinates = false;
     _status = null;
+    _associations = [];
+    _currentPage = 1;
+    _hasMoreResults = true;
+    _hasSearched = false;
     notifyListeners();
   }
 

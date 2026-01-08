@@ -11,20 +11,20 @@ import 'auth_service.dart';
 class BackendService {
   final http.Client _client;
   final AuthService authService;
-  
+
   BackendService({
     required this.authService,
     http.Client? client,
   }) : _client = client ?? http.Client();
-  
+
   // === ASSOCIATIONS ===
-  
+
   /// Récupère les données enrichies d'une association
   Future<Association?> getAssociationEnriched(String id) async {
     try {
       final uri = Uri.parse('${ApiConfig.backendBaseUrl}${ApiConfig.associationsEndpoint}/$id');
       final response = await _client.get(uri).timeout(ApiConfig.connectionTimeout);
-      
+
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         return Association.fromJson(data);
@@ -38,7 +38,7 @@ class BackendService {
       throw BackendException('Erreur: $e');
     }
   }
-  
+
   /// Met à jour une association (président uniquement)
   Future<Association> updateAssociation(String id, Map<String, dynamic> data) async {
     try {
@@ -48,7 +48,7 @@ class BackendService {
         headers: authService.getAuthHeaders(),
         body: json.encode(data),
       ).timeout(ApiConfig.connectionTimeout);
-      
+
       if (response.statusCode == 200) {
         return Association.fromJson(json.decode(response.body));
       } else if (response.statusCode == 401) {
@@ -61,17 +61,17 @@ class BackendService {
       throw BackendException('Erreur: $e');
     }
   }
-  
+
   // === COMMENTAIRES ===
-  
+
   /// Récupère les commentaires d'une association
   Future<List<Comment>> getComments(String associationId) async {
     try {
       final uri = Uri.parse('${ApiConfig.backendBaseUrl}${ApiConfig.commentsEndpoint}')
           .replace(queryParameters: {'association_id': associationId});
-      
+
       final response = await _client.get(uri).timeout(ApiConfig.connectionTimeout);
-      
+
       if (response.statusCode == 200) {
         final List<dynamic> data = json.decode(response.body);
         return data.map((json) => Comment.fromJson(json)).toList();
@@ -83,7 +83,7 @@ class BackendService {
       throw BackendException('Erreur: $e');
     }
   }
-  
+
   /// Ajoute un commentaire
   Future<Comment> addComment({
     required String associationId,
@@ -101,7 +101,7 @@ class BackendService {
           if (note != null) 'note': note,
         }),
       ).timeout(ApiConfig.connectionTimeout);
-      
+
       if (response.statusCode == 201) {
         return Comment.fromJson(json.decode(response.body));
       } else if (response.statusCode == 401) {
@@ -114,7 +114,7 @@ class BackendService {
       throw BackendException('Erreur: $e');
     }
   }
-  
+
   /// Supprime un commentaire
   Future<void> deleteComment(String commentId) async {
     try {
@@ -123,7 +123,7 @@ class BackendService {
         uri,
         headers: authService.getAuthHeaders(),
       ).timeout(ApiConfig.connectionTimeout);
-      
+
       if (response.statusCode != 200 && response.statusCode != 204) {
         throw BackendException('Erreur: ${response.statusCode}', response.statusCode);
       }
@@ -132,15 +132,15 @@ class BackendService {
       throw BackendException('Erreur: $e');
     }
   }
-  
+
   // === NOTES/RATINGS ===
-  
+
   /// Récupère les statistiques de notation d'une association
   Future<RatingStats> getRatingStats(String associationId) async {
     try {
       final uri = Uri.parse('${ApiConfig.backendBaseUrl}${ApiConfig.ratingsEndpoint}/stats/$associationId');
       final response = await _client.get(uri).timeout(ApiConfig.connectionTimeout);
-      
+
       if (response.statusCode == 200) {
         return RatingStats.fromJson(json.decode(response.body));
       } else {
@@ -151,7 +151,7 @@ class BackendService {
       throw BackendException('Erreur: $e');
     }
   }
-  
+
   /// Ajoute ou met à jour une note
   Future<Rating> rateAssociation({
     required String associationId,
@@ -167,7 +167,7 @@ class BackendService {
           'note': note,
         }),
       ).timeout(ApiConfig.connectionTimeout);
-      
+
       if (response.statusCode == 201 || response.statusCode == 200) {
         return Rating.fromJson(json.decode(response.body));
       } else if (response.statusCode == 401) {
@@ -180,9 +180,9 @@ class BackendService {
       throw BackendException('Erreur: $e');
     }
   }
-  
+
   // === REVENDICATIONS ===
-  
+
   /// Revendique une association (président)
   Future<void> claimAssociation({
     required String associationId,
@@ -198,7 +198,7 @@ class BackendService {
           if (justification != null) 'justification': justification,
         }),
       ).timeout(ApiConfig.connectionTimeout);
-      
+
       if (response.statusCode != 201 && response.statusCode != 200) {
         if (response.statusCode == 401) {
           throw BackendException('Vous devez être connecté', 401);
@@ -211,7 +211,7 @@ class BackendService {
       throw BackendException('Erreur: $e');
     }
   }
-  
+
   void dispose() {
     _client.close();
   }

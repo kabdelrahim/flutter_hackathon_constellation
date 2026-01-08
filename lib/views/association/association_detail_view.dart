@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_rating_bar/flutter_rating_bar.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
 import '../../models/association.dart';
 import '../../models/comment.dart';
 import '../../controllers/association_controller.dart';
@@ -109,6 +111,7 @@ class _AssociationDetailViewState extends State<AssociationDetailView> {
                           children: [
                             _buildHeader(association),
                             _buildInfoSection(association),
+                            _buildLocationMap(association),
                             _buildContactSection(association),
                             _buildRatingSection(association, ratingController),
                             _buildCommentsSection(
@@ -351,9 +354,8 @@ class _AssociationDetailViewState extends State<AssociationDetailView> {
     Association association,
     RatingController ratingController,
   ) {
-    if (association.noteGlobale == null) {
-      return const SizedBox.shrink();
-    }
+    final authController = context.read<AuthController>();
+    final isAuthenticated = authController.isAuthenticated;
 
     return Container(
       margin: const EdgeInsets.all(24),
@@ -364,46 +366,116 @@ class _AssociationDetailViewState extends State<AssociationDetailView> {
       ),
       child: Column(
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(
-                association.noteGlobale!.toStringAsFixed(1),
-                style: const TextStyle(
-                  fontSize: 48,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(width: 16),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  RatingBarIndicator(
-                    rating: association.noteGlobale!,
-                    itemBuilder: (context, index) =>
-                        const Icon(Icons.star, color: Colors.amber),
-                    itemCount: 5,
-                    itemSize: 24,
+          if (association.noteGlobale != null) ...[
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  association.noteGlobale!.toStringAsFixed(1),
+                  style: const TextStyle(
+                    fontSize: 48,
+                    fontWeight: FontWeight.bold,
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    '${association.nombreAvis} avis',
-                    style: TextStyle(color: Colors.grey[600]),
+                ),
+                const SizedBox(width: 16),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    RatingBarIndicator(
+                      rating: association.noteGlobale!,
+                      itemBuilder: (context, index) =>
+                          const Icon(Icons.star, color: Colors.amber),
+                      itemCount: 5,
+                      itemSize: 24,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '${association.nombreAvis ?? 0} avis',
+                      style: TextStyle(color: Colors.grey[600]),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            const Divider(),
+            const SizedBox(height: 16),
+          ],
+          const Text(
+            'Votre avis',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 12),
+          if (!isAuthenticated) ...[
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.blue.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.blue.withOpacity(0.3)),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.info_outline, color: Colors.blue[700], size: 20),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'Connectez-vous pour noter et commenter',
+                      style: TextStyle(color: Colors.blue[700], fontSize: 14),
+                    ),
                   ),
                 ],
               ),
-            ],
-          ),
+            ),
+          ] else ...[
+            RatingBar.builder(
+              initialRating: 0,
+              minRating: 1,
+              direction: Axis.horizontal,
+              allowHalfRating: false,
+              itemCount: 5,
+              itemSize: 40,
+              itemPadding: const EdgeInsets.symmetric(horizontal: 4),
+              itemBuilder: (context, _) => const Icon(
+                Icons.star,
+                color: Colors.amber,
+              ),
+              onRatingUpdate: (rating) async {
+                final success = await ratingController.rateAssociation(
+                  associationId: _associationId!,
+                  note: rating.toInt(),
+                );
+                if (success && mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Note enregistrée !')),
+                  );
+                  await _loadAssociationDetails();
+                }
+              },
+            ),
+          ],
           const SizedBox(height: 16),
           FilledButton.icon(
-            onPressed: () {
-              // TODO: Ouvrir le formulaire d'ajout d'avis
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Ajout d\'avis à venir')),
-              );
-            },
-            icon: const Icon(Icons.rate_review),
-            label: const Text('Laisser un avis'),
+            onPressed: isAuthenticated
+                ? _showAddCommentDialog
+                : () {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: const Text('Connectez-vous pour commenter'),
+                        action: SnackBarAction(
+                          label: 'Connexion',
+                          onPressed: () {
+                            Navigator.pushNamed(context, '/login');
+                          },
+                        ),
+                      ),
+                    );
+                  },
+            icon: const Icon(Icons.comment),
+            label: const Text('Laisser un commentaire'),
+            style: FilledButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+            ),
           ),
         ],
       ),
@@ -415,23 +487,46 @@ class _AssociationDetailViewState extends State<AssociationDetailView> {
     Association association,
     List<Comment> comments,
   ) {
-    if (comments.isEmpty) {
-      return const SizedBox.shrink();
-    }
-
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Avis récents',
-            style: Theme.of(
-              context,
-            ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Avis (${comments.length})',
+                style: Theme.of(
+                  context,
+                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+              ),
+            ],
           ),
           const SizedBox(height: 16),
-          ...comments.map((comment) => _buildCommentCard(comment)),
+          if (comments.isEmpty)
+            Center(
+              child: Padding(
+                padding: const EdgeInsets.all(32),
+                child: Column(
+                  children: [
+                    Icon(Icons.comment_outlined, size: 48, color: Colors.grey[400]),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Aucun avis pour le moment',
+                      style: TextStyle(color: Colors.grey[600]),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Soyez le premier à donner votre avis !',
+                      style: TextStyle(color: Colors.grey[500], fontSize: 13),
+                    ),
+                  ],
+                ),
+              ),
+            )
+          else
+            ...comments.map((comment) => _buildCommentCard(comment)),
         ],
       ),
     );
@@ -501,6 +596,167 @@ class _AssociationDetailViewState extends State<AssociationDetailView> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  void _showAddCommentDialog() {
+    final commentController = TextEditingController();
+    double rating = 5.0;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          title: const Text('Votre commentaire'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Note', style: TextStyle(fontWeight: FontWeight.w600)),
+                const SizedBox(height: 8),
+                Center(
+                  child: RatingBar.builder(
+                    initialRating: rating,
+                    minRating: 1,
+                    direction: Axis.horizontal,
+                    allowHalfRating: false,
+                    itemCount: 5,
+                    itemSize: 36,
+                    itemPadding: const EdgeInsets.symmetric(horizontal: 4),
+                    itemBuilder: (context, _) => const Icon(
+                      Icons.star,
+                      color: Colors.amber,
+                    ),
+                    onRatingUpdate: (r) {
+                      setDialogState(() => rating = r);
+                    },
+                  ),
+                ),
+                const SizedBox(height: 16),
+                const Text('Commentaire', style: TextStyle(fontWeight: FontWeight.w600)),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: commentController,
+                  maxLines: 4,
+                  decoration: const InputDecoration(
+                    hintText: 'Partagez votre expérience...',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: const Text('Annuler'),
+            ),
+            FilledButton(
+              onPressed: () async {
+                if (commentController.text.trim().isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Le commentaire est requis')),
+                  );
+                  return;
+                }
+
+                final commentCtrl = context.read<CommentController>();
+                final success = await commentCtrl.addComment(
+                  associationId: _associationId!,
+                  contenu: commentController.text.trim(),
+                  note: rating.toInt(),
+                );
+
+                Navigator.of(ctx).pop();
+
+                if (success) {
+                  await _loadAssociationDetails();
+
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Commentaire ajouté !')),
+                    );
+                  }
+                }
+              },
+              child: const Text('Publier'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLocationMap(Association association) {
+    if (association.latitude == null || association.longitude == null) {
+      return const SizedBox.shrink();
+    }
+
+    final LatLng position = LatLng(association.latitude!, association.longitude!);
+
+    return Padding(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Localisation',
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 12),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: SizedBox(
+              height: 250,
+              child: FlutterMap(
+                options: MapOptions(
+                  initialCenter: position,
+                  initialZoom: 15,
+                  minZoom: 5,
+                  maxZoom: 18,
+                ),
+                children: [
+                  TileLayer(
+                    urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                    userAgentPackageName: 'com.constellation.app',
+                    maxZoom: 19,
+                  ),
+                  MarkerLayer(
+                    markers: [
+                      Marker(
+                        point: position,
+                        width: 40,
+                        height: 40,
+                        child: const Icon(
+                          Icons.location_on,
+                          size: 40,
+                          color: Colors.red,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Icon(Icons.place, size: 16, color: Colors.grey[600]),
+              const SizedBox(width: 4),
+              Expanded(
+                child: Text(
+                  association.adresseComplete,
+                  style: TextStyle(color: Colors.grey[600], fontSize: 13),
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }

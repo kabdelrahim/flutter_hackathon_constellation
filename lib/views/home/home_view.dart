@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:latlong2/latlong.dart';
 
 /// Home screen simple et moderne
 class HomeView extends StatefulWidget {
@@ -11,11 +14,45 @@ class HomeView extends StatefulWidget {
 class _HomeViewState extends State<HomeView> {
   final _searchController = TextEditingController();
   int _selectedIndex = 0;
+  LatLng? _currentPosition;
+  bool _locating = false;
 
   @override
   void dispose() {
     _searchController.dispose();
     super.dispose();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _initLocation();
+  }
+
+  Future<void> _initLocation() async {
+    setState(() => _locating = true);
+    try {
+      final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        setState(() => _locating = false);
+        return;
+      }
+      var permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+      if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) {
+        setState(() => _locating = false);
+        return;
+      }
+      final pos = await Geolocator.getCurrentPosition();
+      setState(() {
+        _currentPosition = LatLng(pos.latitude, pos.longitude);
+        _locating = false;
+      });
+    } catch (_) {
+      setState(() => _locating = false);
+    }
   }
 
   void _handleSearch() {
@@ -40,9 +77,6 @@ class _HomeViewState extends State<HomeView> {
         _navigateToAssociations({});
         break;
       case 2:
-        Navigator.pushNamed(context, '/map');
-        break;
-      case 3:
         Navigator.pushNamed(context, '/login');
         break;
     }
@@ -219,6 +253,8 @@ class _HomeViewState extends State<HomeView> {
           ],
         ),
         const SizedBox(height: 12),
+        _buildNearbyMapPreview(),
+        const SizedBox(height: 12),
         ...nearby.map((item) => Padding(
           padding: const EdgeInsets.only(bottom: 10),
           child: Container(
@@ -255,6 +291,83 @@ class _HomeViewState extends State<HomeView> {
           ),
         )).toList(),
       ],
+    );
+  }
+
+  Widget _buildNearbyMapPreview() {
+    final height = 180.0;
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        height: height,
+        decoration: BoxDecoration(
+          border: Border.all(color: Colors.grey[200]!),
+          color: Colors.white,
+        ),
+        child: Stack(
+          children: [
+            if (_currentPosition != null)
+              FlutterMap(
+                options: MapOptions(
+                  initialCenter: _currentPosition!,
+                  initialZoom: 14,
+                  minZoom: 5,
+                  maxZoom: 18,
+                ),
+                children: [
+                  TileLayer(
+                    urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                    userAgentPackageName: 'com.constellation.app',
+                    maxZoom: 19,
+                  ),
+                  MarkerLayer(
+                    markers: [
+                      Marker(
+                        point: _currentPosition!,
+                        width: 36,
+                        height: 36,
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF2563EB),
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white, width: 3),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              )
+            else
+              Center(
+                child: _locating
+                    ? const CircularProgressIndicator()
+                    : Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.location_off, color: Colors.grey[400]),
+                          const SizedBox(height: 8),
+                          Text('Localisation indisponible', style: TextStyle(color: Colors.grey[600])),
+                          TextButton(
+                            onPressed: _initLocation,
+                            child: const Text('Activer'),
+                          ),
+                        ],
+                      ),
+              ),
+            Positioned(
+              right: 8,
+              bottom: 8,
+              child: FilledButton.icon(
+                onPressed: () => _navigateToAssociations({'withCoordinates': true}),
+                style: FilledButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8)),
+                icon: const Icon(Icons.near_me, size: 16),
+                label: const Text('Voir autour', style: TextStyle(fontSize: 12)),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -313,8 +426,7 @@ class _HomeViewState extends State<HomeView> {
             children: [
               _buildNavItem(Icons.home_rounded, 'Accueil', 0),
               _buildNavItem(Icons.list_alt_rounded, 'Liste', 1),
-              _buildNavItem(Icons.map_rounded, 'Carte', 2),
-              _buildNavItem(Icons.person_rounded, 'Profil', 3),
+              _buildNavItem(Icons.person_rounded, 'Profil', 2),
             ],
           ),
         ),

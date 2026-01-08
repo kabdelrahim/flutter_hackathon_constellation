@@ -23,6 +23,8 @@ class AssociationRepository {
     bool withCoordinates = false,
     String? status,
     double? minRating,
+    int page = 1,
+    int perPage = 20,
   }) async {
     // 1. Récupérer les données RNA
     final rnaAssociations = await rnaApiService.searchAssociations(
@@ -33,7 +35,9 @@ class AssociationRepository {
       regionCode: regionCode,
       withCoordinates: withCoordinates,
       status: status,
-      includeInactive: false, // Par défaut, ne chercher que les associations actives
+      page: page,
+      perPage: perPage,
+      includeInactive: status == null, // "Toutes" = inclure inactives
     );
     
     // 2. Enrichir avec les données du backend
