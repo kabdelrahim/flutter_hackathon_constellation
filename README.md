@@ -387,7 +387,7 @@ flutter test --coverage
 - [x] Recherche d'associations via API RNA
 - [x] Géolocalisation et recherche par proximité
 - [x] Carte interactive
-- [x] Commentaires et notes
+- [] Commentaires et notes
 
 ### Version 1.1 (À venir)
 - [ ] Favoris
