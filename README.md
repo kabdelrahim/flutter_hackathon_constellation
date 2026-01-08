@@ -83,7 +83,7 @@ Cette commande vérifie que tout est correctement configuré. Résolvez les prob
 #### 1. Cloner le Repository
 
 ```bash
-git clone https://github.com/votre-username/flutter_hackathon_constellation.git
+git clone https://github.com/kabdelrahim/flutter_hackathon_constellation.git
 cd flutter_hackathon_constellation
 ```
 
@@ -95,7 +95,7 @@ flutter pub get
 
 Cette commande télécharge tous les packages nécessaires listés dans `pubspec.yaml`.
 
-#### 3. Configuration de l'API Backend (Optionnel)
+#### 3. Configuration de l'API Backend (PAS IMPLEMENTE)
 
 > ⚠️ **Note** : L'application fonctionne avec l'API RNA publique sans backend. Le backend est optionnel pour les fonctionnalités sociales (commentaires, notes, revendications).
 
