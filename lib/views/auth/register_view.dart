@@ -208,7 +208,7 @@ class _RegisterViewState extends State<RegisterView> {
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     backgroundColor: const Color(0xFF2563EB),
                   ),
-                  child: const Text('S\'inscrire'),
+                  child: const Text('S\'inscrire',style: TextStyle(color: Colors.white),),
                 ),
                 const SizedBox(height: 16),
                 Row(

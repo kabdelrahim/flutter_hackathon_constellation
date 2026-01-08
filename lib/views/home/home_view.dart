@@ -61,7 +61,9 @@ class _HomeViewState extends State<HomeView> {
         });
 
       setState(() {
-        _nearbyAssociations = sorted.take(10).toList(); // 10 pour la map, 3 pour les cards
+        _nearbyAssociations = sorted
+            .take(10)
+            .toList(); // 10 pour la map, 3 pour les cards
         _fetchingNearby = false;
       });
     } catch (_) {
@@ -72,11 +74,12 @@ class _HomeViewState extends State<HomeView> {
   double _calculateDistance(LatLng pos1, Association assoc) {
     if (!assoc.hasCoordinates) return double.infinity;
     return Geolocator.distanceBetween(
-      pos1.latitude,
-      pos1.longitude,
-      assoc.latitude!,
-      assoc.longitude!,
-    ) / 1000;
+          pos1.latitude,
+          pos1.longitude,
+          assoc.latitude!,
+          assoc.longitude!,
+        ) /
+        1000;
   }
 
   Future<void> _initLocation() async {
@@ -91,7 +94,8 @@ class _HomeViewState extends State<HomeView> {
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
       }
-      if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) {
+      if (permission == LocationPermission.denied ||
+          permission == LocationPermission.deniedForever) {
         setState(() => _locating = false);
         return;
       }
@@ -122,7 +126,7 @@ class _HomeViewState extends State<HomeView> {
         break;
       case 1:
         // Liste simple sans géolocalisation
-        Navigator.pushNamed(context, '/associations', arguments: <String, dynamic>{});
+        _navigateToAssociations({});
         break;
       case 2:
         Navigator.pushNamed(context, '/login');
@@ -133,7 +137,7 @@ class _HomeViewState extends State<HomeView> {
   void _navigateToAssociations(Map<String, dynamic> args) {
     final lat = _currentPosition?.latitude;
     final lng = _currentPosition?.longitude;
-    
+
     // Si withCoordinates est true, on ajoute latitude/longitude
     final finalArgs = {
       ...args,
@@ -142,12 +146,8 @@ class _HomeViewState extends State<HomeView> {
         'longitude': lng,
       },
     };
-    
-    Navigator.pushNamed(
-      context,
-      '/associations',
-      arguments: finalArgs,
-    );
+
+    Navigator.pushNamed(context, '/associations', arguments: finalArgs);
   }
 
   @override
@@ -155,7 +155,10 @@ class _HomeViewState extends State<HomeView> {
     return Scaffold(
       backgroundColor: const Color(0xFFFAFAFA),
       appBar: AppBar(
-        title: const Text('Constellation', style: TextStyle(fontWeight: FontWeight.w700)),
+        title: const Text(
+          'Constellation',
+          style: TextStyle(fontWeight: FontWeight.w700),
+        ),
         backgroundColor: Colors.white,
         elevation: 0,
         centerTitle: false,
@@ -198,11 +201,20 @@ class _HomeViewState extends State<HomeView> {
       children: [
         const Text(
           'Decouvrez',
-          style: TextStyle(fontSize: 32, fontWeight: FontWeight.w800, height: 1.1),
+          style: TextStyle(
+            fontSize: 32,
+            fontWeight: FontWeight.w800,
+            height: 1.1,
+          ),
         ),
         const Text(
           'les associations',
-          style: TextStyle(fontSize: 32, fontWeight: FontWeight.w800, color: Color(0xFF2563EB), height: 1.1),
+          style: TextStyle(
+            fontSize: 32,
+            fontWeight: FontWeight.w800,
+            color: Color(0xFF2563EB),
+            height: 1.1,
+          ),
         ),
         const SizedBox(height: 12),
         Text(
@@ -232,7 +244,10 @@ class _HomeViewState extends State<HomeView> {
             onPressed: _handleSearch,
           ),
           border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 16,
+          ),
         ),
       ),
     );
@@ -240,7 +255,11 @@ class _HomeViewState extends State<HomeView> {
 
   Widget _buildQuickActions() {
     final actions = [
-      {'icon': Icons.explore_rounded, 'label': 'Explorer', 'args': <String, dynamic>{}},
+      {
+        'icon': Icons.explore_rounded,
+        'label': 'Explorer',
+        'args': <String, dynamic>{},
+      },
       {
         'icon': Icons.location_on_rounded,
         'label': 'Pres de moi',
@@ -254,7 +273,10 @@ class _HomeViewState extends State<HomeView> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Actions rapides', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+        const Text(
+          'Actions rapides',
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+        ),
         const SizedBox(height: 12),
         Row(
           children: actions.map((action) {
@@ -274,7 +296,11 @@ class _HomeViewState extends State<HomeView> {
     );
   }
 
-  Widget _buildActionButton(IconData icon, String label, Map<String, dynamic> args) {
+  Widget _buildActionButton(
+    IconData icon,
+    String label,
+    Map<String, dynamic> args,
+  ) {
     return GestureDetector(
       onTap: () => _navigateToAssociations(args),
       child: Container(
@@ -306,10 +332,14 @@ class _HomeViewState extends State<HomeView> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Text('Autour de vous', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+            const Text(
+              'Autour de vous',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+            ),
             TextButton(
               // "Voir tout" envoie avec géolocalisation
-              onPressed: () => _navigateToAssociations({'withCoordinates': true}),
+              onPressed: () =>
+                  _navigateToAssociations({'withCoordinates': true}),
               style: TextButton.styleFrom(padding: EdgeInsets.zero),
               child: const Text('Voir tout', style: TextStyle(fontSize: 14)),
             ),
@@ -338,36 +368,72 @@ class _HomeViewState extends State<HomeView> {
             final distance = _calculateDistance(_currentPosition!, assoc);
             return Padding(
               padding: const EdgeInsets.only(bottom: 10),
-              child: Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: Colors.grey[200]!),
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 44,
-                      height: 44,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF2563EB).withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(10),
+              child: InkWell(
+                onTap: () {
+                  Navigator.pushNamed(
+                    context,
+                    '/association-detail',
+                    arguments: {'association': assoc},
+                  );
+                },
+                borderRadius: BorderRadius.circular(10),
+                child: Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: Colors.grey[200]!),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 44,
+                        height: 44,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF2563EB).withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Icon(
+                          Icons.business_rounded,
+                          size: 22,
+                          color: Color(0xFF2563EB),
+                        ),
                       ),
-                      child: const Icon(Icons.business_rounded, size: 22, color: Color(0xFF2563EB)),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(assoc.nom, style: const TextStyle(fontWeight: FontWeight.w600), maxLines: 1, overflow: TextOverflow.ellipsis),
-                          Text('${assoc.codePostal} ${assoc.ville}', style: TextStyle(fontSize: 12, color: Colors.grey[600]), maxLines: 1, overflow: TextOverflow.ellipsis),
-                        ],
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              assoc.nom,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w600,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            Text(
+                              '${assoc.codePostal} ${assoc.ville}',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey[600],
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                    Text('${distance.toStringAsFixed(1)} km', style: TextStyle(fontSize: 12, color: Colors.grey[500], fontWeight: FontWeight.w500)),
-                  ],
+                      Text(
+                        '${distance.toStringAsFixed(1)} km',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey[500],
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             );
@@ -398,7 +464,8 @@ class _HomeViewState extends State<HomeView> {
                 ),
                 children: [
                   TileLayer(
-                    urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                    urlTemplate:
+                        'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                     userAgentPackageName: 'com.constellation.app',
                     maxZoom: 19,
                   ),
@@ -419,16 +486,18 @@ class _HomeViewState extends State<HomeView> {
                         ),
                       ..._nearbyAssociations
                           .where((a) => a.hasCoordinates)
-                          .map((assoc) => Marker(
-                                point: LatLng(assoc.latitude!, assoc.longitude!),
-                                width: 32,
-                                height: 32,
-                                child: Icon(
-                                  Icons.location_on,
-                                  size: 32,
-                                  color: Colors.red.withOpacity(0.8),
-                                ),
-                              )),
+                          .map(
+                            (assoc) => Marker(
+                              point: LatLng(assoc.latitude!, assoc.longitude!),
+                              width: 32,
+                              height: 32,
+                              child: Icon(
+                                Icons.location_on,
+                                size: 32,
+                                color: Colors.red.withOpacity(0.8),
+                              ),
+                            ),
+                          ),
                     ],
                   ),
                 ],
@@ -442,7 +511,10 @@ class _HomeViewState extends State<HomeView> {
                         children: [
                           Icon(Icons.location_off, color: Colors.grey[400]),
                           const SizedBox(height: 8),
-                          Text('Localisation indisponible', style: TextStyle(color: Colors.grey[600])),
+                          Text(
+                            'Localisation indisponible',
+                            style: TextStyle(color: Colors.grey[600]),
+                          ),
                           TextButton(
                             onPressed: _initLocation,
                             child: const Text('Activer'),
@@ -455,10 +527,19 @@ class _HomeViewState extends State<HomeView> {
               bottom: 8,
               child: FilledButton.icon(
                 // Bouton "Voir autour" envoie avec géolocalisation
-                onPressed: () => _navigateToAssociations({'withCoordinates': true}),
-                style: FilledButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8)),
+                onPressed: () =>
+                    _navigateToAssociations({'withCoordinates': true}),
+                style: FilledButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
+                ),
                 icon: const Icon(Icons.near_me, size: 16),
-                label: const Text('Voir autour', style: TextStyle(fontSize: 12)),
+                label: const Text(
+                  'Voir autour',
+                  style: TextStyle(fontSize: 12),
+                ),
               ),
             ),
           ],
@@ -471,13 +552,28 @@ class _HomeViewState extends State<HomeView> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Comment ca marche', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+        const Text(
+          'Comment ca marche',
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+        ),
         const SizedBox(height: 16),
-        _buildInfoStep(Icons.search_rounded, 'Recherchez', 'Trouvez par nom, ville ou mot-cle'),
+        _buildInfoStep(
+          Icons.search_rounded,
+          'Recherchez',
+          'Trouvez par nom, ville ou mot-cle',
+        ),
         const SizedBox(height: 12),
-        _buildInfoStep(Icons.map_rounded, 'Explorez', 'Carte interactive et liste detaillee'),
+        _buildInfoStep(
+          Icons.map_rounded,
+          'Explorez',
+          'Carte interactive et liste detaillee',
+        ),
         const SizedBox(height: 12),
-        _buildInfoStep(Icons.star_rounded, 'Participez', 'Notez et partagez votre avis'),
+        _buildInfoStep(
+          Icons.star_rounded,
+          'Participez',
+          'Notez et partagez votre avis',
+        ),
       ],
     );
   }
@@ -500,7 +596,10 @@ class _HomeViewState extends State<HomeView> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
-              Text(subtitle, style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+              Text(
+                subtitle,
+                style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+              ),
             ],
           ),
         ),
@@ -537,7 +636,11 @@ class _HomeViewState extends State<HomeView> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, color: isSelected ? const Color(0xFF2563EB) : Colors.grey[400], size: 24),
+          Icon(
+            icon,
+            color: isSelected ? const Color(0xFF2563EB) : Colors.grey[400],
+            size: 24,
+          ),
           const SizedBox(height: 2),
           Text(
             label,

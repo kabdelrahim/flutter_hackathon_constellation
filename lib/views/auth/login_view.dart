@@ -115,7 +115,7 @@ class _LoginViewState extends State<LoginView> {
                       ),
                       child: authController.isLoading
                           ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2, valueColor: AlwaysStoppedAnimation<Color>(Colors.white)))
-                          : const Text('Se connecter'),
+                          : const Text('Se connecter', style: TextStyle(color: Colors.white),),
                     );
                   },
                 ),
