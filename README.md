@@ -2,7 +2,7 @@
 
 <div align="center">
 
-**Plateforme hybride annuaire & réseau social pour découvrir et interagir avec les 1,5 million d'associations françaises**
+**Plateforme hybride annuaire & réseau social pour découvrir et interagir avec les 3,5 million d'associations françaises**
 
 [![Flutter](https://img.shields.io/badge/Flutter-3.9.2-02569B?logo=flutter)](https://flutter.dev)
 [![Dart](https://img.shields.io/badge/Dart-3.9.2-0175C2?logo=dart)](https://dart.dev)
@@ -20,7 +20,7 @@
 
 ## 📖 Description
 
-**Constellation** est une application mobile cross-platform qui répond à une problématique nationale : bien que la France compte plus de 1,5 million d'associations, leurs informations sont souvent dispersées et peu accessibles.
+**Constellation** est une application mobile cross-platform qui répond à une problématique nationale : bien que la France compte plus de 3,5 million d'associations, leurs informations sont souvent dispersées et peu accessibles.
 
 ### Objectifs
 - 🔍 **Découvrir** les associations autour de soi grâce à la géolocalisation
