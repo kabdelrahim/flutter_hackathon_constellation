@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:provider/provider.dart';
+import '../../controllers/association_controller.dart';
+import '../../models/association.dart';
 
 /// Home screen simple et moderne
 class HomeView extends StatefulWidget {
@@ -16,6 +19,8 @@ class _HomeViewState extends State<HomeView> {
   int _selectedIndex = 0;
   LatLng? _currentPosition;
   bool _locating = false;
+  List<Association> _nearbyAssociations = [];
+  bool _fetchingNearby = false;
 
   @override
   void dispose() {
@@ -27,6 +32,46 @@ class _HomeViewState extends State<HomeView> {
   void initState() {
     super.initState();
     _initLocation();
+  }
+
+  Future<void> _fetchNearbyAssociations() async {
+    if (_currentPosition == null || !mounted) return;
+    setState(() => _fetchingNearby = true);
+    try {
+      final controller = context.read<AssociationController>();
+      await controller.searchAssociations(
+        query: null,
+        latitude: _currentPosition!.latitude,
+        longitude: _currentPosition!.longitude,
+        withCoordinates: true,
+        maxDistanceKm: 50,
+        resetPage: true,
+      );
+      if (mounted) {
+        final sorted = List<Association>.from(controller.associations);
+        sorted.sort((a, b) {
+          final distA = _calculateDistance(_currentPosition!, a);
+          final distB = _calculateDistance(_currentPosition!, b);
+          return distA.compareTo(distB);
+        });
+        setState(() {
+          _nearbyAssociations = sorted.take(10).toList();
+          _fetchingNearby = false;
+        });
+      }
+    } catch (_) {
+      setState(() => _fetchingNearby = false);
+    }
+  }
+
+  double _calculateDistance(LatLng pos1, Association assoc) {
+    if (!assoc.hasCoordinates) return double.infinity;
+    return Geolocator.distanceBetween(
+      pos1.latitude,
+      pos1.longitude,
+      assoc.latitude!,
+      assoc.longitude!,
+    ) / 1000;
   }
 
   Future<void> _initLocation() async {
@@ -50,6 +95,7 @@ class _HomeViewState extends State<HomeView> {
         _currentPosition = LatLng(pos.latitude, pos.longitude);
         _locating = false;
       });
+      _fetchNearbyAssociations();
     } catch (_) {
       setState(() => _locating = false);
     }
@@ -173,8 +219,7 @@ class _HomeViewState extends State<HomeView> {
   Widget _buildQuickActions() {
     final actions = [
       {'icon': Icons.explore_rounded, 'label': 'Explorer', 'args': <String, dynamic>{}},
-      {'icon': Icons.location_on_rounded, 'label': 'Pres de moi', 'args': {'withCoordinates': true}},
-      {'icon': Icons.map_rounded, 'label': 'Carte', 'args': {'_map': true}},
+      {'icon': Icons.location_on_rounded, 'label': 'Pres de moi', 'args': {'withCoordinates': true, 'latitude': _currentPosition?.latitude, 'longitude': _currentPosition?.longitude}},
     ];
 
     return Column(
@@ -202,13 +247,7 @@ class _HomeViewState extends State<HomeView> {
 
   Widget _buildActionButton(IconData icon, String label, Map<String, dynamic> args) {
     return GestureDetector(
-      onTap: () {
-        if (args.containsKey('_map')) {
-          Navigator.pushNamed(context, '/map');
-        } else {
-          _navigateToAssociations(args);
-        }
-      },
+      onTap: () => _navigateToAssociations(args),
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 14),
         decoration: BoxDecoration(
@@ -232,12 +271,6 @@ class _HomeViewState extends State<HomeView> {
   }
 
   Widget _buildNearbySection() {
-    final nearby = [
-      {'name': 'MJC Lyon Centre', 'city': 'Lyon (69)', 'distance': '1,2 km'},
-      {'name': 'Sport & Solidarite', 'city': 'Villeurbanne (69)', 'distance': '2,8 km'},
-      {'name': 'Culture Pour Tous', 'city': 'Lyon 3eme (69)', 'distance': '3,5 km'},
-    ];
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -255,41 +288,60 @@ class _HomeViewState extends State<HomeView> {
         const SizedBox(height: 12),
         _buildNearbyMapPreview(),
         const SizedBox(height: 12),
-        ...nearby.map((item) => Padding(
-          padding: const EdgeInsets.only(bottom: 10),
-          child: Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: Colors.grey[200]!),
+        if (_fetchingNearby)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 20),
+            child: Center(child: CircularProgressIndicator()),
+          )
+        else if (_nearbyAssociations.isEmpty)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 20),
+            child: Center(
+              child: Text(
+                'Aucune association trouvée près de vous',
+                style: TextStyle(color: Colors.grey[600]),
+              ),
             ),
-            child: Row(
-              children: [
-                Container(
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF2563EB).withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: const Icon(Icons.business_rounded, size: 22, color: Color(0xFF2563EB)),
+          )
+        else
+          ..._nearbyAssociations.take(3).map((assoc) {
+            final distance = _calculateDistance(_currentPosition!, assoc);
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: Colors.grey[200]!),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(item['name']!, style: const TextStyle(fontWeight: FontWeight.w600)),
-                      Text(item['city']!, style: TextStyle(fontSize: 12, color: Colors.grey[600])),
-                    ],
-                  ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF2563EB).withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(Icons.business_rounded, size: 22, color: Color(0xFF2563EB)),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(assoc.nom, style: const TextStyle(fontWeight: FontWeight.w600), maxLines: 1, overflow: TextOverflow.ellipsis),
+                          Text('${assoc.codePostal} ${assoc.ville}', style: TextStyle(fontSize: 12, color: Colors.grey[600]), maxLines: 1, overflow: TextOverflow.ellipsis),
+                        ],
+                      ),
+                    ),
+                    Text('${distance.toStringAsFixed(1)} km', style: TextStyle(fontSize: 12, color: Colors.grey[500], fontWeight: FontWeight.w500)),
+                  ],
                 ),
-                Text(item['distance']!, style: TextStyle(fontSize: 12, color: Colors.grey[500], fontWeight: FontWeight.w500)),
-              ],
-            ),
-          ),
-        )).toList(),
+              ),
+            );
+          }).toList(),
       ],
     );
   }
@@ -334,6 +386,19 @@ class _HomeViewState extends State<HomeView> {
                           ),
                         ),
                       ),
+                      ..._nearbyAssociations.map((assoc) {
+                        if (!assoc.hasCoordinates) return null;
+                        return Marker(
+                          point: LatLng(assoc.latitude!, assoc.longitude!),
+                          width: 32,
+                          height: 32,
+                          child: Icon(
+                            Icons.location_on,
+                            size: 32,
+                            color: Colors.red.withOpacity(0.8),
+                          ),
+                        );
+                      }).whereType<Marker>(),
                     ],
                   ),
                 ],

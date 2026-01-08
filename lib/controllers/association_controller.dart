@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:geolocator/geolocator.dart';
 import '../models/association.dart';
 import '../repositories/association_repository.dart';
 import '../config/api_config.dart';
@@ -60,6 +61,9 @@ class AssociationController extends ChangeNotifier {
     String? codePostal,
     String? departement,
     String? regionCode,
+    double? latitude,
+    double? longitude,
+    double? maxDistanceKm,
     bool? withCoordinates,
     String? status,
     bool resetPage = true,
@@ -105,18 +109,37 @@ class AssociationController extends ChangeNotifier {
         codePostal: _codePostal,
         departement: _departement,
         regionCode: _regionCode,
-        withCoordinates: _withCoordinates,
+        withCoordinates: _withCoordinates || (latitude != null && longitude != null),
         status: _status,
         minRating: _minRating,
         page: requestedPage,
         perPage: _pageSize,
       );
 
+      // Tri et filtre distance côté client si coordonnées fournies
+      List<Association> list = List<Association>.from(results);
+      if (latitude != null && longitude != null) {
+        list = list.where((a) => a.hasCoordinates).toList();
+        list.sort((a, b) {
+          final dA = Geolocator.distanceBetween(latitude, longitude, a.latitude!, a.longitude!);
+          final dB = Geolocator.distanceBetween(latitude, longitude, b.latitude!, b.longitude!);
+          return dA.compareTo(dB);
+        });
+        if (maxDistanceKm != null) {
+          list = list
+              .where((a) =>
+                  Geolocator.distanceBetween(latitude, longitude, a.latitude!, a.longitude!) /
+                      1000 <=
+                  maxDistanceKm)
+              .toList();
+        }
+      }
+
       if (resetPage) {
-        _associations = results;
+        _associations = list;
         _currentPage = 1;
       } else {
-        _associations.addAll(results);
+        _associations.addAll(list);
         _currentPage = requestedPage;
       }
 
