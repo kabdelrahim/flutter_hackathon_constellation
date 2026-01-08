@@ -35,30 +35,35 @@ class _HomeViewState extends State<HomeView> {
   }
 
   Future<void> _fetchNearbyAssociations() async {
+    // Attendre la géoloc
     if (_currentPosition == null || !mounted) return;
     setState(() => _fetchingNearby = true);
     try {
       final controller = context.read<AssociationController>();
+      // Récupérer beaucoup de résultats géocodés, puis trier côté client
       await controller.searchAssociations(
         query: null,
         latitude: _currentPosition!.latitude,
         longitude: _currentPosition!.longitude,
         withCoordinates: true,
-        maxDistanceKm: 50,
+        maxDistanceKm: null, // pas de filtre dur côté API
         resetPage: true,
       );
-      if (mounted) {
-        final sorted = List<Association>.from(controller.associations);
-        sorted.sort((a, b) {
+
+      if (!mounted) return;
+
+      final sorted = List<Association>.from(controller.associations)
+        ..retainWhere((a) => a.hasCoordinates)
+        ..sort((a, b) {
           final distA = _calculateDistance(_currentPosition!, a);
           final distB = _calculateDistance(_currentPosition!, b);
           return distA.compareTo(distB);
         });
-        setState(() {
-          _nearbyAssociations = sorted.take(10).toList();
-          _fetchingNearby = false;
-        });
-      }
+
+      setState(() {
+        _nearbyAssociations = sorted.take(10).toList(); // 10 pour la map, 3 pour les cards
+        _fetchingNearby = false;
+      });
     } catch (_) {
       setState(() => _fetchingNearby = false);
     }
@@ -110,22 +115,39 @@ class _HomeViewState extends State<HomeView> {
     );
   }
 
-  void _navigateToAssociations(Map<String, dynamic> args) {
-    Navigator.pushNamed(context, '/associations', arguments: args);
-  }
-
   void _onNavigationItemTapped(int index) {
     setState(() => _selectedIndex = index);
     switch (index) {
       case 0:
         break;
       case 1:
-        _navigateToAssociations({});
+        // Liste simple sans géolocalisation
+        Navigator.pushNamed(context, '/associations', arguments: <String, dynamic>{});
         break;
       case 2:
         Navigator.pushNamed(context, '/login');
         break;
     }
+  }
+
+  void _navigateToAssociations(Map<String, dynamic> args) {
+    final lat = _currentPosition?.latitude;
+    final lng = _currentPosition?.longitude;
+    
+    // Si withCoordinates est true, on ajoute latitude/longitude
+    final finalArgs = {
+      ...args,
+      if (args['withCoordinates'] == true && lat != null && lng != null) ...{
+        'latitude': lat,
+        'longitude': lng,
+      },
+    };
+    
+    Navigator.pushNamed(
+      context,
+      '/associations',
+      arguments: finalArgs,
+    );
   }
 
   @override
@@ -219,7 +241,14 @@ class _HomeViewState extends State<HomeView> {
   Widget _buildQuickActions() {
     final actions = [
       {'icon': Icons.explore_rounded, 'label': 'Explorer', 'args': <String, dynamic>{}},
-      {'icon': Icons.location_on_rounded, 'label': 'Pres de moi', 'args': {'withCoordinates': true, 'latitude': _currentPosition?.latitude, 'longitude': _currentPosition?.longitude}},
+      {
+        'icon': Icons.location_on_rounded,
+        'label': 'Pres de moi',
+        'args': {
+          'withCoordinates': true,
+          // coords seront complétées dans _navigateToAssociations
+        },
+      },
     ];
 
     return Column(
@@ -279,6 +308,7 @@ class _HomeViewState extends State<HomeView> {
           children: [
             const Text('Autour de vous', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
             TextButton(
+              // "Voir tout" envoie avec géolocalisation
               onPressed: () => _navigateToAssociations({'withCoordinates': true}),
               style: TextButton.styleFrom(padding: EdgeInsets.zero),
               child: const Text('Voir tout', style: TextStyle(fontSize: 14)),
@@ -374,31 +404,31 @@ class _HomeViewState extends State<HomeView> {
                   ),
                   MarkerLayer(
                     markers: [
-                      Marker(
-                        point: _currentPosition!,
-                        width: 36,
-                        height: 36,
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF2563EB),
-                            shape: BoxShape.circle,
-                            border: Border.all(color: Colors.white, width: 3),
+                      if (_currentPosition != null)
+                        Marker(
+                          point: _currentPosition!,
+                          width: 36,
+                          height: 36,
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF2563EB),
+                              shape: BoxShape.circle,
+                              border: Border.all(color: Colors.white, width: 3),
+                            ),
                           ),
                         ),
-                      ),
-                      ..._nearbyAssociations.map((assoc) {
-                        if (!assoc.hasCoordinates) return null;
-                        return Marker(
-                          point: LatLng(assoc.latitude!, assoc.longitude!),
-                          width: 32,
-                          height: 32,
-                          child: Icon(
-                            Icons.location_on,
-                            size: 32,
-                            color: Colors.red.withOpacity(0.8),
-                          ),
-                        );
-                      }).whereType<Marker>(),
+                      ..._nearbyAssociations
+                          .where((a) => a.hasCoordinates)
+                          .map((assoc) => Marker(
+                                point: LatLng(assoc.latitude!, assoc.longitude!),
+                                width: 32,
+                                height: 32,
+                                child: Icon(
+                                  Icons.location_on,
+                                  size: 32,
+                                  color: Colors.red.withOpacity(0.8),
+                                ),
+                              )),
                     ],
                   ),
                 ],
@@ -424,6 +454,7 @@ class _HomeViewState extends State<HomeView> {
               right: 8,
               bottom: 8,
               child: FilledButton.icon(
+                // Bouton "Voir autour" envoie avec géolocalisation
                 onPressed: () => _navigateToAssociations({'withCoordinates': true}),
                 style: FilledButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8)),
                 icon: const Icon(Icons.near_me, size: 16),

@@ -20,6 +20,9 @@ class _AssociationListViewState extends State<AssociationListView> {
   final _scrollController = ScrollController();
   Timer? _debounce;
   String? _initialQuery;
+  double? _argLat;
+  double? _argLng;
+  bool _argWithCoords = false;
 
   @override
   void initState() {
@@ -32,9 +35,12 @@ class _AssociationListViewState extends State<AssociationListView> {
         _initialQuery = args['query'] as String?;
         if (_initialQuery != null && _initialQuery!.trim().isNotEmpty) {
           _searchController.text = _initialQuery!;
-          _loadAssociations();
         }
+        _argLat = args['latitude'] as double?;
+        _argLng = args['longitude'] as double?;
+        _argWithCoords = (args['withCoordinates'] as bool?) ?? false;
       }
+      _loadAssociations(reset: true);
     });
   }
 
@@ -59,14 +65,17 @@ class _AssociationListViewState extends State<AssociationListView> {
     }
   }
 
-  Future<void> _loadAssociations() async {
+  Future<void> _loadAssociations({bool reset = false}) async {
     final controller = context.read<AssociationController>();
     await controller.searchAssociations(
       query: _searchController.text.trim().isEmpty ? null : _searchController.text.trim(),
       ville: _villeController.text.trim().isEmpty ? null : _villeController.text.trim(),
       codePostal: _codePostalController.text.trim().isEmpty ? null : _codePostalController.text.trim(),
       departement: _departementController.text.trim().isEmpty ? null : _departementController.text.trim(),
-      resetPage: true,
+      latitude: _argLat,
+      longitude: _argLng,
+      withCoordinates: _argWithCoords,
+      resetPage: reset,
     );
   }
 
